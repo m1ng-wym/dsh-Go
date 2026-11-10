@@ -681,6 +681,20 @@ class ChatController extends Notifier<ChatState> {
         item,
   ];
 
+  /// A follow stream that ended: drop the coalesced publish still queued for
+  /// it and publish once from the transcript (the settle guard stops its live
+  /// draft from rendering as still streaming), then mark the loss. Without
+  /// dropping the queued flush it republishes the streaming draft *after* the
+  /// error and the marker comes back for good (verifier race, D3-02-AC3);
+  /// publishing here keeps the partial text/thinking that did arrive.
+  void _settleStreamsAfterLoss({String? error}) {
+    _flush?.cancel();
+    _flush = null;
+    _dirty = false;
+    _publish();
+    state = state.copyWith(streamLost: true, loading: false, error: error);
+  }
+
   void _markSyncing({SessionFollowEpoch? epoch, bool building = false}) {
     _followEpoch?.retire();
     _followEpoch = epoch;
@@ -740,7 +754,7 @@ class ChatController extends Notifier<ChatState> {
                   _markSyncing();
                   if (!_syncReady.isCompleted) _syncReady.complete(false);
                   unawaited(_sub?.cancel());
-                  state = state.copyWith(streamLost: true, loading: false, items: _settleStreams(state.items));
+                  _settleStreamsAfterLoss();
                 }
                 return false;
               },
@@ -894,19 +908,14 @@ class ChatController extends Notifier<ChatState> {
               return;
             }
             appErrorLog.record(AppErrorSource.session, e, stack);
-            state = state.copyWith(
-              error: chatErrorText(e, action: appL10n.stateChatSyncInterrupted),
-              streamLost: true,
-              loading: false,
-              items: _settleStreams(state.items),
-            );
+            _settleStreamsAfterLoss(error: chatErrorText(e, action: appL10n.stateChatSyncInterrupted));
           },
           onDone: () {
             if (!current()) return;
             _watchEnded = true;
             _markSyncing();
             if (!_syncReady.isCompleted) _syncReady.complete(false);
-            state = state.copyWith(streamLost: true, loading: false, items: _settleStreams(state.items));
+            _settleStreamsAfterLoss();
           },
         );
   }
@@ -1143,7 +1152,11 @@ class ChatController extends Notifier<ChatState> {
   void _publish({bool freshSnapshot = false}) {
     _dirty = false;
     _moving.removeWhere((_, operation) => !_currentOperation(operation));
-    final items = _transcript.items;
+    // The follow is over: a publish already queued must show the rows as
+    // settled, not the transcript's still-live draft. A re-listen clears
+    // [_watchEnded] before its snapshot, so this only covers the gap.
+    final live = _transcript.items;
+    final items = _watchEnded ? _settleStreams(live) : live;
     final running = _transcript.running;
     if (!running) {
       _stopTimeout?.cancel();

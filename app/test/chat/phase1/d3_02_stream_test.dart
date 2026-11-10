@@ -304,4 +304,78 @@ void main() {
 
     expect(container.read(chatProvider('s1')).items, hasLength(before), reason: 'D3-02 错误/边界: 空回复不产生一行内容');
   });
+
+  // Regression for the verifier-found race: a chunk arrives, then the stream
+  // dies before the 32 ms coalescing flush runs. The queued flush must not
+  // republish the transcript's still-streaming draft over the settled error
+  // state (otherwise "思考中" comes back for good).
+  testWidgets('D3-02_stream_error_within_flush_window_clears_streaming', (tester) async {
+    final client = _StreamClient();
+    late ChatState state;
+    await tester.runAsync(() async {
+      final container = await _start(client);
+      addTearDown(() async {
+        container.dispose();
+        await client.events.close();
+      });
+
+      client.events.add(_started('a1', 0));
+      client.events.add(_chunk('a1', 1, 0, const BlockStartChunk(0, 'reasoning')));
+      client.events.add(_chunk('a1', 2, 1, const ReasoningDeltaChunk(0, _reasoning)));
+      // No settle: the coalesced publish is still queued (<32 ms).
+      client.events.addError(const DshRemoteException('io/closed', 'mock stream dropped'));
+      // Give the queued flush every chance to run; it must not revive streaming.
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await container.pump();
+      state = container.read(chatProvider('s1'));
+    });
+
+    expect(state.streamLost, isTrue);
+    final lost = state.items.whereType<AssistantChatItem>().last;
+    expect(lost.reasoning, _reasoning, reason: 'D3-02-AC3: generated content survives the race');
+    expect(
+      lost.streaming,
+      isFalse,
+      reason: 'D3-02-AC3: a flush queued before the error must not put the streaming draft back',
+    );
+
+    await _pumpState(tester, state);
+    expect(find.text('思考中'), findsNothing, reason: 'D3-02-AC3: no thinking cover after the error race');
+    expect(find.byType(ThinkingTicker), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('D3-02_stream_onDone_within_flush_window_clears_streaming', (tester) async {
+    final client = _StreamClient();
+    late ChatState state;
+    await tester.runAsync(() async {
+      final container = await _start(client);
+      addTearDown(() async {
+        container.dispose();
+      });
+
+      client.events.add(_started('a1', 0));
+      client.events.add(_chunk('a1', 1, 0, const BlockStartChunk(0, 'reasoning')));
+      client.events.add(_chunk('a1', 2, 1, const ReasoningDeltaChunk(0, _reasoning)));
+      // The follow socket closes (<32 ms after the chunk): onDone, no error.
+      await client.events.close();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await container.pump();
+      state = container.read(chatProvider('s1'));
+    });
+
+    expect(state.streamLost, isTrue);
+    final lost = state.items.whereType<AssistantChatItem>().last;
+    expect(lost.reasoning, _reasoning, reason: 'D3-02-AC3: generated content survives the close');
+    expect(
+      lost.streaming,
+      isFalse,
+      reason: 'D3-02-AC3: a flush queued before the close must not put the streaming draft back',
+    );
+
+    await _pumpState(tester, state);
+    expect(find.text('思考中'), findsNothing, reason: 'D3-02-AC3: no thinking cover after the close race');
+    expect(find.byType(ThinkingTicker), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
