@@ -185,10 +185,19 @@ class DartSshTransport implements SshTransport, RemoteBootstrapShell {
       throw HostLinkError(
         HostLinkErrorKind.badPrivateKey,
         appL10n.remoteErrKeyUnreadable,
-        detail: appL10n.remotePrivateKeyFormats(e.toString()),
+        detail: appL10n.remotePrivateKeyFormats(_safeKeyFailure(e)),
       );
     }
   }
+
+  /// A parse failure's readable reason, never the exception's `toString()`:
+  /// `FormatException` appends the offending source line, which here is the
+  /// private key body itself.
+  static String _safeKeyFailure(Object error) => switch (error) {
+    FormatException(:final message) => message,
+    SSHKeyDecodeError(:final message) => message,
+    _ => error.runtimeType.toString(),
+  };
 
   static HostLinkError describeSocketError(SocketException e, SshConnectParams params) {
     final os = e.osError?.message ?? e.message;
