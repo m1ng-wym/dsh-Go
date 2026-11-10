@@ -540,7 +540,7 @@ class _PhoneControlScreenState extends ConsumerState<PhoneControlScreen> {
         ? ListPageRow(
             icon: AppIcons.phoneControl,
             title: l10n.phoneControlWorking,
-            trailing: FixButton(label: l10n.commonStop, onPressed: _stopTask),
+            trailing: FixButton(label: l10n.commonStop, onPressed: () => _stopTask(status.task.id)),
           )
         : null;
     final returnRow = MergeSemantics(
