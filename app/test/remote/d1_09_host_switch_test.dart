@@ -11,7 +11,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dsh_app/remote/link_status.dart';
-import 'package:dsh_app/remote/relay/relay_backend.dart';
 import 'package:dsh_app/remote/secret_store.dart';
 import 'package:dsh_app/remote/ssh/ssh_link.dart';
 import 'package:dsh_app/runtime/runtime_bridge.dart';

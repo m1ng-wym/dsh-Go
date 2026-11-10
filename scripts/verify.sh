@@ -191,6 +191,7 @@ run_self_test() {
     pass_info "PASS self-test: --list detects repo"
   else
     warn "FAIL self-test: --list did not detect repo"; fail=1
+    sed -n '1,20p' "$tmp/list.out" 2>/dev/null | sed 's/^/  selftest: /' >&2
   fi
   # 2) --static with missing flutter/dart must fail (fail-on-skip), not exit 0.
   if env -i PATH="$restricted" HOME="$HOME" VERIFY_SELFTEST=1 bash "$tmp/repo/scripts/verify.sh" --static > "$tmp/static.out" 2>&1; then
@@ -223,6 +224,7 @@ run_self_test() {
     pass_info "PASS self-test: legacy layout auto-detection (no --repo)"
   else
     warn "FAIL self-test: legacy layout auto-detection"; fail=1
+    sed -n '1,20p' "$tmp/legacy.out" 2>/dev/null | sed 's/^/  selftest: /' >&2
   fi
   rm -rf "$tmp"
   if [ "$fail" -ne 0 ]; then
