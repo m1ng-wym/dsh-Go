@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../diagnostics/redact.dart';
 import '../l10n/l10n.dart';
 import '../state/settings_state.dart';
 import '../state/read_list_epoch.dart';
@@ -184,22 +185,32 @@ class LocalRuntimeController extends Notifier<LocalRuntimeState> {
     }
   }
 
+  /// A start or stop already on its way to the native side. A second tap while
+  /// one is in flight joins it instead of asking again (D1-02-AC4); the native
+  /// channel is not built for two concurrent starts.
+  Future<void>? _starting;
+  Future<void>? _stopping;
+
   /// The API key is not passed here: it is written to DSH's own credential store
   /// after connecting (see connection_state.dart), so it can change without a restart.
   /// Keeps the current mode: in safe mode this starts safe mode again.
-  Future<void> start() {
-    final settings = ref.read(settingsProvider);
-    return _startOrReopen(
-      () => _bridge.start(phoneStorage: settings.phoneStorage, visualReplies: settings.visualReplies),
-    );
-  }
+  Future<void> start() => _startOnce(null);
 
   /// Starts in [mode]; [EngineMode.normal] from safe mode begins the two-minute trial.
-  Future<void> startIn(EngineMode mode) {
+  Future<void> startIn(EngineMode mode) => _startOnce(mode);
+
+  Future<void> _startOnce(EngineMode? mode) {
+    if (_starting case final pending?) return pending;
     final settings = ref.read(settingsProvider);
-    return _startOrReopen(
-      () => _bridge.start(phoneStorage: settings.phoneStorage, visualReplies: settings.visualReplies, mode: mode),
-    );
+    late Future<void> tracked;
+    tracked = _startOrReopen(
+      () => mode == null
+          ? _bridge.start(phoneStorage: settings.phoneStorage, visualReplies: settings.visualReplies)
+          : _bridge.start(phoneStorage: settings.phoneStorage, visualReplies: settings.visualReplies, mode: mode),
+    ).whenComplete(() {
+      if (identical(_starting, tracked)) _starting = null;
+    });
+    return _starting = tracked;
   }
 
   /// HarmonyOS's engine runs in the app's own process and only once, so a second
@@ -218,7 +229,17 @@ class LocalRuntimeController extends Notifier<LocalRuntimeState> {
     }
   }
 
-  Future<void> stop() => _bridge.stop();
+  Future<void> stop() {
+    // A stop after a start must not be swallowed: the next start is the last
+    // operation and the native side queues it while this stop finishes.
+    _starting = null;
+    if (_stopping case final pending?) return pending;
+    late Future<void> tracked;
+    tracked = _bridge.stop().whenComplete(() {
+      if (identical(_stopping, tracked)) _stopping = null;
+    });
+    return _stopping = tracked;
+  }
 
   Future<void> reset() => resetKeeping(const ResetKeep());
 
@@ -252,7 +273,10 @@ class LocalRuntimeLogsController extends Notifier<List<String>> {
       var changed = false;
       for (final entry in entries) {
         if (entry.seq <= throughSeq) continue;
-        lines.addLast(entry.line);
+        // Credentials are masked once when a line arrives, so every reader
+        // (the live log, copy/share, the diagnostics fallback) sees the same
+        // redacted text (D1-04-AC3).
+        lines.addLast(redactDiagnostics(entry.line));
         if (lines.length > _maxLogs) lines.removeFirst();
         throughSeq = entry.seq;
         changed = true;
