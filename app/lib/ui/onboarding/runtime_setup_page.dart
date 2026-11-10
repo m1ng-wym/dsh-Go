@@ -196,6 +196,7 @@ class _RuntimeSetupPageState extends ConsumerState<RuntimeSetupPage> {
       _SetupView.choose => _upgrade ? l10n.shellRuntimeFilesKept : l10n.shellRuntimeFirstSetup,
       _SetupView.done => l10n.shellRuntimeContinuing,
       _SetupView.failed when state.status.keepFailed => l10n.shellRuntimeRestoreFailed,
+      _SetupView.failed when state.installFailure?.message.isNotEmpty == true => state.installFailure!.message,
       _SetupView.failed => humanizeRuntimeError(state.status.error) ?? l10n.shellRuntimeExtractFailed,
     };
     final meta = view == _SetupView.installing ? installMetaLine(l10n, progress, ref.watch(installEtaProvider)) : null;
