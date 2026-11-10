@@ -403,6 +403,7 @@ class ChatHarness {
     this.extra = const [],
     this.newChatCatalogs = false,
     this.chatController,
+    this.controllerFactory,
     FakePicker? picker,
   }) : sessions = FakeSessions(created: created),
        picker = picker ?? FakePicker();
@@ -429,6 +430,11 @@ class ChatHarness {
   /// A controller for the session under test (a test that needs a specific
   /// model-switch outcome); null builds the usual [FakeChatController].
   final ChatController Function(String id)? chatController;
+
+  /// Builds the fake controller for a conversation. Null keeps the ordinary
+  /// [FakeChatController]; suites that need a different recording behavior
+  /// pass a subclass here. Takes precedence only when [chatController] is null.
+  final FakeChatController Function(String id, ChatState initial)? controllerFactory;
   final controllers = <String, FakeChatController>{};
   final balanceRequests = <String>[];
 
@@ -465,9 +471,12 @@ class ChatHarness {
     sessionsProvider.overrideWith(() => sessions),
     currentSessionProvider.overrideWith(() => FixedSession(session)),
     chatProvider.overrideWith2(
-      (id) =>
-          chatController?.call(id) ??
-          (controllers[id] = FakeChatController(id, states[id] ?? const ChatState(loading: false))),
+      (id) {
+        final direct = chatController?.call(id);
+        if (direct != null) return direct;
+        return controllers[id] = controllerFactory?.call(id, states[id] ?? const ChatState(loading: false)) ??
+            FakeChatController(id, states[id] ?? const ChatState(loading: false));
+      },
     ),
     ...extra,
   ];

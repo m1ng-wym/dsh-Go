@@ -138,6 +138,10 @@ class _QuestionCardState extends State<QuestionCard> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final questions = widget.request.questions;
+    // A plan review is one question that says so (`intent.kind`) and carries
+    // the plan as its detail; it is still answered by this card, but it is
+    // named for what it is (official web: 计划待审).
+    final planReview = questions.length == 1 && questions.single.intent?['kind'] == 'plan-review';
 
     const button = Size(0, 44);
     Widget spinner(Color color) => SizedBox.square(
@@ -157,7 +161,11 @@ class _QuestionCardState extends State<QuestionCard> {
     );
     return ChatCard(
       icon: AppIcons.question,
-      title: questions.length > 1 ? l10n.chatQuestionsTitle(questions.length) : l10n.chatOneQuestion,
+      title: planReview
+          ? l10n.statePlanPending
+          : questions.length > 1
+          ? l10n.chatQuestionsTitle(questions.length)
+          : l10n.chatOneQuestion,
       tone: ChatCardTone.ask,
       children: [
         Padding(

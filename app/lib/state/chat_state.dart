@@ -1575,7 +1575,9 @@ class ChatController extends Notifier<ChatState> {
       // late reply current again after the user has started another stop.
       if (operation.ref.mounted && identical(_client, operation.client) && operation.stopAttempt == _stopAttempt) {
         _stoppingOperation = null;
-        state = state.copyWith(stopping: false);
+        // Unconfirmed: the turn may still be running, so the key comes back
+        // and the person is told it did not stop (D3-05-AC3).
+        state = state.copyWith(stopping: false, error: appL10n.stateChatStopFailed);
       }
     });
   }
