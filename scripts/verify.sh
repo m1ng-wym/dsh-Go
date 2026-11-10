@@ -80,7 +80,8 @@ resolve_repo() {
   [ -n "${DSH_REPO:-}" ] && candidates+=("$DSH_REPO")
   candidates+=("$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)")                    # <repo>/scripts -> repo
   candidates+=("$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)")                # <repo> (if scripts nested)
-  candidates+=("$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd)/repo")        # legacy side-by-side layout -> sibling repo
+  candidates+=("$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)/repo")            # legacy: <root>/scripts + <root>/repo
+  candidates+=("$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd)/repo")        # legacy: <root>/legacy/scripts + <root>/repo
   candidates+=("$PWD")
   for c in "${candidates[@]}"; do
     if [ -n "$c" ] && [ -f "$c/app/pubspec.yaml" ] && [ -d "$c/.github" ]; then
@@ -186,9 +187,13 @@ run_self_test() {
   cp "$SCRIPT_DIR/../test/fixtures/mock_model_server.mjs" "$tmp/repo/test/fixtures/mock_model_server.mjs" 2>/dev/null || true
 
   # 1) --list detects the repo and does not execute anything.
-  if env -i PATH="$restricted" HOME="$HOME" VERIFY_SELFTEST=1 bash "$tmp/repo/scripts/verify.sh" --list > "$tmp/list.out" 2>&1 \
-     && grep -q "repo: .*repo" "$tmp/list.out"; then
-    pass_info "PASS self-test: --list detects repo"
+  if env -i PATH="$restricted" HOME="$HOME" VERIFY_SELFTEST=1 bash "$tmp/repo/scripts/verify.sh" --list > "$tmp/list.out" 2>&1; then
+    list_repo="$(sed -n 's/.*repo: //p' "$tmp/list.out" 2>/dev/null | head -1)"
+    if [ -n "$list_repo" ] && [ "$(cd "$list_repo" 2>/dev/null && pwd -P)" = "$(cd "$tmp/repo" && pwd -P)" ]; then
+      pass_info "PASS self-test: --list detects repo"
+    else
+      warn "FAIL self-test: --list detected wrong repo ($list_repo)"; fail=1
+    fi
   else
     warn "FAIL self-test: --list did not detect repo"; fail=1
     sed -n '1,20p' "$tmp/list.out" 2>/dev/null | sed 's/^/  selftest: /' >&2
@@ -219,9 +224,13 @@ run_self_test() {
   # 5) legacy side-by-side layout: <tmp>/legacy/scripts/verify.sh + <tmp>/repo (auto-detect, no --repo)
   mkdir -p "$tmp/legacy/scripts"
   cp "$SCRIPT_DIR/verify.sh" "$tmp/legacy/scripts/verify.sh"
-  if env -i PATH="$restricted" HOME="$HOME" VERIFY_SELFTEST=1 bash "$tmp/legacy/scripts/verify.sh" --list > "$tmp/legacy.out" 2>&1 \
-     && grep -q "repo: .*repo" "$tmp/legacy.out"; then
-    pass_info "PASS self-test: legacy layout auto-detection (no --repo)"
+  if env -i PATH="$restricted" HOME="$HOME" VERIFY_SELFTEST=1 bash "$tmp/legacy/scripts/verify.sh" --list > "$tmp/legacy.out" 2>&1; then
+    legacy_repo="$(sed -n 's/.*repo: //p' "$tmp/legacy.out" 2>/dev/null | head -1)"
+    if [ -n "$legacy_repo" ] && [ "$(cd "$legacy_repo" 2>/dev/null && pwd -P)" = "$(cd "$tmp/repo" && pwd -P)" ]; then
+      pass_info "PASS self-test: legacy layout auto-detection (no --repo)"
+    else
+      warn "FAIL self-test: legacy detected wrong repo ($legacy_repo)"; fail=1
+    fi
   else
     warn "FAIL self-test: legacy layout auto-detection"; fail=1
     sed -n '1,20p' "$tmp/legacy.out" 2>/dev/null | sed 's/^/  selftest: /' >&2
