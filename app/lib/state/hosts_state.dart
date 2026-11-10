@@ -137,6 +137,9 @@ class HostsController extends Notifier<HostsState> {
     } catch (_) {
       // No preferences backend (tests) or a corrupt entry: start empty.
     }
+    // Another provider may have initialized this controller just before the
+    // container went away (a startup disposed while preferences were loading).
+    if (!ref.mounted) return;
     state = HostsState(ssh: hosts, loaded: true);
   }
 
@@ -308,14 +311,35 @@ class ActiveHostController extends Notifier<HostRef> {
   static const prefsKey = 'active_host';
   bool _touched = false;
   late Future<void> _loaded;
+  ProviderSubscription<HostsState>? _hostsSub;
 
   @override
   HostRef build() {
     // Read the startup preference now, so the remote hosts page shows the
     // stored value from its first frame.
     ref.read(remoteAutoConnectProvider);
+    // A saved host that no longer exists must not stay active: the phone is
+    // what's left. An empty saved list is left alone — persistence is restored
+    // as-is there, and the connection already falls back to 本机. A container
+    // listener (not ref.listen) keeps HostsController.removeSsh, which reads
+    // this notifier, from forming a provider dependency cycle.
+    _hostsSub?.close();
+    _hostsSub = ref.container.listen(hostsProvider, (_, next) => _dropMissingHost(next));
+    ref.onDispose(() {
+      _hostsSub?.close();
+      _hostsSub = null;
+    });
     _loaded = _restore();
     return HostRef.local;
+  }
+
+  /// Leaves the current SSH host for 本机 when it is no longer in the saved
+  /// list (deleted while another launch had it active, a stale preference).
+  void _dropMissingHost(HostsState hosts) {
+    if (!ref.mounted || !hosts.loaded || hosts.ssh.isEmpty) return;
+    final current = state;
+    if (current.kind != HostKind.ssh || hosts.sshById(current.id) != null) return;
+    unawaited(forget((host) => host.kind == HostKind.ssh && host.id == current.id));
   }
 
   /// The startup host choice has settled, including a disabled auto-connect
@@ -328,7 +352,10 @@ class ActiveHostController extends Notifier<HostRef> {
       final prefs = await SharedPreferences.getInstance();
       final restored = HostRef.decode(prefs.getString(prefsKey));
       final autoConnect = prefs.getBool(RemoteAutoConnectController.prefsKey) ?? true;
-      if (!_touched && owner.mounted && autoConnect) state = restored;
+      if (!_touched && owner.mounted && autoConnect) {
+        state = restored;
+        _dropMissingHost(ref.read(hostsProvider));
+      }
     } catch (_) {
       // No preferences backend (tests): stay on 本机.
     }
