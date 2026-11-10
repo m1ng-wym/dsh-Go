@@ -389,6 +389,7 @@ class ChatHarness {
     this.runtime,
     this.extra = const [],
     this.newChatCatalogs = false,
+    this.controllerFactory,
     FakePicker? picker,
   }) : sessions = FakeSessions(created: created),
        picker = picker ?? FakePicker();
@@ -411,6 +412,11 @@ class ChatHarness {
   /// Off by default: suites that script their Host's traffic must not leave
   /// catalog requests in flight (test/chat/new_chat_options_test.dart opts in).
   final bool newChatCatalogs;
+
+  /// Builds the fake controller for a conversation. Null keeps the ordinary
+  /// [FakeChatController]; suites that need a different recording behavior
+  /// pass a subclass here.
+  final FakeChatController Function(String id, ChatState initial)? controllerFactory;
   final controllers = <String, FakeChatController>{};
   final balanceRequests = <String>[];
 
@@ -447,7 +453,8 @@ class ChatHarness {
     sessionsProvider.overrideWith(() => sessions),
     currentSessionProvider.overrideWith(() => FixedSession(session)),
     chatProvider.overrideWith2(
-      (id) => controllers[id] = FakeChatController(id, states[id] ?? const ChatState(loading: false)),
+      (id) => controllers[id] = controllerFactory?.call(id, states[id] ?? const ChatState(loading: false)) ??
+          FakeChatController(id, states[id] ?? const ChatState(loading: false)),
     ),
     ...extra,
   ];

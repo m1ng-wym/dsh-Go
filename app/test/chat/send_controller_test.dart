@@ -392,7 +392,10 @@ void main() {
       expect(sub.read().stopping, isTrue);
       await tester.pump(const Duration(seconds: 10));
       expect(sub.read().stopping, isFalse);
-      expect(sub.read().error, isNull);
+      // D3-05-AC3: an unconfirmed stop is reported, and the turn is not
+      // pretended stopped (running stays true).
+      expect(sub.read().error, '没能停下，再试一次');
+      expect(sub.read().running, isTrue);
       sub.close();
       container.dispose();
       await client.events.close();
