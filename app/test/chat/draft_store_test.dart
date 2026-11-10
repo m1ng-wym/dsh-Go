@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dsh_app/state/attachments.dart';
 import 'package:dsh_app/state/draft_store.dart';
@@ -12,6 +13,7 @@ import 'package:dsh_app/ui/chat/widgets/attachments.dart';
 import 'package:dsh_app/ui/theme/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,13 +23,35 @@ import 'support/composer_fakes.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('only text survives a provider scope restart; empty slots are deleted', () async {
-    var container = ProviderContainer();
+  test('text and unsent attachment bytes survive a provider scope restart; empty slots are deleted', () async {
+    final dir = Directory.systemTemp.createTempSync('dsh-draft-store');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    List<Override> overrides() => [draftAttachmentRootProvider.overrideWithValue(() async => dir)];
+    var container = ProviderContainer(overrides: overrides());
     var store = container.read(draftStoreProvider.notifier);
     final image = DraftAttachment.sniff('图片.png', tinyPng);
     store.save('a', 'A 草稿', [image]);
     store.save('b', 'B 草稿', const []);
     store.clear('b');
+    await store.flush();
+    container.dispose();
+    container = ProviderContainer(overrides: overrides());
+    store = container.read(draftStoreProvider.notifier);
+    await store.flush();
+    final drafts = container.read(draftStoreProvider).drafts;
+    expect(drafts['a']!.text, 'A 草稿');
+    expect(drafts['a']!.attachments.single.name, '图片.png');
+    expect(drafts['a']!.attachments.single.bytes, tinyPng);
+    expect(drafts.containsKey('b'), isFalse);
+    container.dispose();
+  });
+
+  test('without a writable support folder the text still survives', () async {
+    var container = ProviderContainer(
+      overrides: [draftAttachmentRootProvider.overrideWithValue(() async => throw const FileSystemException('no folder'))],
+    );
+    var store = container.read(draftStoreProvider.notifier);
+    store.save('a', 'A 草稿', [DraftAttachment.sniff('图片.png', tinyPng)]);
     await store.flush();
     container.dispose();
     container = ProviderContainer();
@@ -36,7 +60,6 @@ void main() {
     final drafts = container.read(draftStoreProvider).drafts;
     expect(drafts['a']!.text, 'A 草稿');
     expect(drafts['a']!.attachments, isEmpty);
-    expect(drafts.containsKey('b'), isFalse);
     container.dispose();
   });
 

@@ -389,6 +389,7 @@ class ChatHarness {
     this.runtime,
     this.extra = const [],
     this.newChatCatalogs = false,
+    this.restoreSelection = false,
     FakePicker? picker,
   }) : sessions = FakeSessions(created: created),
        picker = picker ?? FakePicker();
@@ -411,6 +412,11 @@ class ChatHarness {
   /// Off by default: suites that script their Host's traffic must not leave
   /// catalog requests in flight (test/chat/new_chat_options_test.dart opts in).
   final bool newChatCatalogs;
+
+  /// Leave `currentSessionProvider` real, so it restores the last conversation
+  /// from preferences as a relaunch does (PERSIST-01). Off by default: most
+  /// suites pin the conversation through [session].
+  final bool restoreSelection;
   final controllers = <String, FakeChatController>{};
   final balanceRequests = <String>[];
 
@@ -445,7 +451,7 @@ class ChatHarness {
     ],
     sessionUsageProvider.overrideWith2((id) => FakeUsage(id, usage[id] ?? SessionUsage.empty)),
     sessionsProvider.overrideWith(() => sessions),
-    currentSessionProvider.overrideWith(() => FixedSession(session)),
+    if (!restoreSelection) currentSessionProvider.overrideWith(() => FixedSession(session)),
     chatProvider.overrideWith2(
       (id) => controllers[id] = FakeChatController(id, states[id] ?? const ChatState(loading: false)),
     ),
