@@ -77,7 +77,9 @@ jobs:
       - name: Resolve dependencies
         run: |
           python3 app/tool/l10n_merge.py --no-gen
-          (cd app && flutter pub get --enforce-lockfile)
+          # The app lockfile carries platform-specific plugin packages, so
+          # --enforce-lockfile cannot hold across macOS/Linux; resolve plainly.
+          (cd app && flutter pub get)
           for p in packages/*/pubspec.yaml; do
             (cd "$(dirname "$p")" && dart pub get --enforce-lockfile)
           done
