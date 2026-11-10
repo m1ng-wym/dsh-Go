@@ -34,7 +34,9 @@ class GuestEmbedding(unittest.TestCase):
             file = self.root / path
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_text('fixture\n')
-        for name in ('actions.mjs', 'bridge.mjs', 'plugin.mjs', 'catalog.json'):
+        # Must match the five files embed-engine.sh copies for the phone tools.
+        for name in ('actions.mjs', 'bridge.mjs', 'plugin.mjs', 'descriptions.mjs',
+                     'catalog.json'):
             file = self.root / 'runtime/ios/phone' / name
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_text('fixture\n')
@@ -89,6 +91,7 @@ printf '%s' "$1" >"$2/DshGuestBridge.framework/DshGuestBridge"
                 owner = app / 'Frameworks/DshGuestBridge.framework/DshGuestBridge'
                 self.assertEqual(owner.read_text(), sdk)
                 self.assertTrue((app / 'dsh-runtime/runtime.zip').is_file())
+                self.assertTrue((app / 'dsh-runtime/phone/descriptions.mjs').is_file())
                 self.assertFalse((app / 'dsh-runtime/DshGuest').exists())
 
     def test_guest_compile_failure_stops_the_embed_phase(self):
