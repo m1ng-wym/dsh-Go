@@ -363,8 +363,9 @@ class ChatState {
     bool? autoApprove,
     Set<String>? autoAnswered,
     List<CommandNotice>? commands,
+    List<ChatItem>? items,
   }) => ChatState(
-    items: items,
+    items: items ?? this.items,
     running: running,
     streamLost: streamLost ?? this.streamLost,
     syncing: syncing ?? this.syncing,
@@ -658,6 +659,28 @@ class ChatController extends Notifier<ChatState> {
     clockSkew: _skew ?? Duration.zero,
   );
 
+  /// A follow stream that died ends every live draft for the person: what
+  /// arrived stays on screen, but no row may keep rendering as if deltas were
+  /// still coming (a thinking window that never closes, a text cursor).
+  static List<ChatItem> _settleStreams(List<ChatItem> items) => [
+    for (final item in items)
+      if (item is AssistantChatItem && item.streaming)
+        AssistantChatItem(
+          id: item.id,
+          rowKey: item.rowKey,
+          seq: item.seq,
+          time: item.time,
+          text: item.text,
+          reasoning: item.reasoning,
+          interrupted: item.interrupted,
+          isFinalAnswer: item.isFinalAnswer,
+          usage: item.usage,
+          model: item.model,
+        )
+      else
+        item,
+  ];
+
   void _markSyncing({SessionFollowEpoch? epoch, bool building = false}) {
     _followEpoch?.retire();
     _followEpoch = epoch;
@@ -717,7 +740,7 @@ class ChatController extends Notifier<ChatState> {
                   _markSyncing();
                   if (!_syncReady.isCompleted) _syncReady.complete(false);
                   unawaited(_sub?.cancel());
-                  state = state.copyWith(streamLost: true, loading: false);
+                  state = state.copyWith(streamLost: true, loading: false, items: _settleStreams(state.items));
                 }
                 return false;
               },
@@ -875,6 +898,7 @@ class ChatController extends Notifier<ChatState> {
               error: chatErrorText(e, action: appL10n.stateChatSyncInterrupted),
               streamLost: true,
               loading: false,
+              items: _settleStreams(state.items),
             );
           },
           onDone: () {
@@ -882,7 +906,7 @@ class ChatController extends Notifier<ChatState> {
             _watchEnded = true;
             _markSyncing();
             if (!_syncReady.isCompleted) _syncReady.complete(false);
-            state = state.copyWith(streamLost: true, loading: false);
+            state = state.copyWith(streamLost: true, loading: false, items: _settleStreams(state.items));
           },
         );
   }
