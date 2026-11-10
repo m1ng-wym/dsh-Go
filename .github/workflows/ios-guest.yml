@@ -3,29 +3,12 @@
 # It stops where the full iOS compile run goes on to Flutter, the app and the archive, so a
 # change to the guest is checked in about ten minutes instead of an hour. The steps are the
 # same as in ios-compile.yml's engine job.
-name: iOS guest
+name: iOS guest (DEFERRED in Phase 1 — iSH not built; manual only)
 
+# DEFERRED (Phase 1): iSH / Alpine guest is out of Phase 1 scope (plan §2/§4;
+# see docs/specs/phase1/ci.md). No automatic triggers: the file and jobs stay
+# intact for Phase 2, but nothing runs unless a maintainer dispatches manually.
 on:
-  push:
-    branches: ['feat/ios-**', 'ios/**']
-    paths:
-      - 'runtime/ios/guest/**'
-      - 'runtime/ios/host/**'
-      - 'tooling/ios/ish/**'
-      - 'tooling/ios/build-ish.sh'
-      - 'tooling/ios/build-guest-addon.sh'
-      - 'tooling/ios/engine-smoke/**'
-      - 'tooling/ios/guest-specialization.py'
-      - 'tooling/ios/guest-tests/**'
-      - 'tooling/ios/tests/guest-*'
-      - 'runtime/tests/ios-guest-policy.test.mjs'
-      - 'runtime/tests/fixtures/ios-guest-runtime.mjs'
-      - 'runtime/tests/fixtures/ios-root-grants-channel.mjs'
-      - 'tooling/ios/guest-preload.js.txt'
-      - 'app/ios/Runner/Guest*'
-      - 'app/ios/Runner/EngineChannel.swift'
-      - 'app/lib/runtime/ios_guest.dart'
-      - '.github/workflows/ios-guest.yml'
   workflow_dispatch:
 
 permissions:

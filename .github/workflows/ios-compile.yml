@@ -6,7 +6,7 @@ name: iOS compile
 
 on:
   push:
-    branches: ['feat/ios-**', 'ios/**']
+    branches: ['phase1/**']
     paths:
       - 'app/**'
       - 'packages/**'
@@ -17,6 +17,11 @@ on:
       - '.github/workflows/ios-compile.yml'
   workflow_dispatch:
 
+# Phase 1: iSH/Alpine guest is deferred (see docs/specs/phase1/ci.md). The app build
+# must not require the iSH toolchain; guest build steps below are if: false.
+env:
+  DSH_IOS_GUEST_BUILD: '0'
+
 permissions:
   contents: read
 
@@ -26,6 +31,8 @@ concurrency:
 
 jobs:
   phone-protocol:
+    # DEFERRED (Phase 1): phone control / phone runner is Phase 2 scope (plan §2).
+    if: false # see docs/specs/phase1/ci.md
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -130,6 +137,7 @@ jobs:
           ls -la app/ios/Engine
 
       - name: Install the iSH build tools
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         run: |
           # Homebrew ships ld.lld in its own formula now, not with llvm.
           brew install llvm lld
@@ -141,6 +149,7 @@ jobs:
           PATH="$(brew --prefix lld)/bin:$PATH" ld.lld --version
 
       - name: Identify the pinned iSH build inputs
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         id: ish-inputs
         run: |
           device="$(bash tooling/ios/build-ish.sh --cache-key iphoneos)"
@@ -149,6 +158,7 @@ jobs:
           echo "key=$key" >> "$GITHUB_OUTPUT"
 
       - name: Restore the iSH frameworks and fixed source archive
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         id: ish-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -159,6 +169,7 @@ jobs:
           key: ${{ runner.os }}-ish-${{ steps.ish-inputs.outputs.key }}
 
       - name: Compile iSH and its N-API owner for the simulator and device
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         id: ish-build
         run: |
           for sdk in iphonesimulator iphoneos; do
@@ -180,7 +191,7 @@ jobs:
           done
 
       - name: Save the compiled iSH cache
-        if: steps.ish-cache.outputs.cache-hit != 'true'
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -190,7 +201,7 @@ jobs:
           key: ${{ steps.ish-cache.outputs.cache-primary-key }}
 
       - name: Keep the iSH build logs
-        if: always()
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ios-ish-build
@@ -239,12 +250,14 @@ jobs:
           exit "$status"
 
       - name: Cache the fixed Alpine guest fixture
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/guest-archive/alpine-minirootfs-3.24.4-aarch64.tar.gz
           key: ios-guest-alpine-3.24.4-aarch64-4b14c18f7e90a063b61462ea1462a5732c154bf6adad594974fe6487cd98a8de
 
       - name: Run real guest tools through the simulator approval chain
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         run: |
           mkdir -p "$RUNNER_TEMP/guest-archive"
           archive="$RUNNER_TEMP/guest-archive/alpine-minirootfs-3.24.4-aarch64.tar.gz"
@@ -265,7 +278,7 @@ jobs:
           "$node" tooling/ios/engine-smoke/guest-drive.mjs --simulator "$DSH_SIMULATOR" --smoke "$RUNNER_TEMP/guest-smoke" --frameworks "$RUNNER_TEMP/sim" --runtime "$RUNNER_TEMP/tree/files" --work "$RUNNER_TEMP/guest-smoke-work" --ws "$RUNNER_TEMP/tree/files" --rootfs "$RUNNER_TEMP/guest-installation/rootfs"
 
       - name: Keep real guest approval evidence
-        if: always()
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ios-guest-smoke
@@ -357,7 +370,7 @@ jobs:
           "$node" tooling/ios/engine-smoke/app-check.mjs --simulator "$DSH_SIMULATOR"             --app app/build/ios/iphonesimulator/Runner.app --mode launch --shot "$RUNNER_TEMP/launch.png"
 
       - name: Drive other apps with the phone runner
-        if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+        if: false # DEFERRED Phase 1: see docs/specs/phase1/ci.md
         run: |
           node="$(ls -d "$DSH_IOS_ENGINE_WORK"/node-v*-darwin-arm64/bin/node)"
           "$node" tooling/ios/engine-smoke/phone-runner-check.mjs --simulator "$DSH_SIMULATOR" --work "$RUNNER_TEMP/phone-runner"

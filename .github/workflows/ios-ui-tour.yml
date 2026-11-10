@@ -5,7 +5,7 @@ name: iOS UI tour
 on:
   push:
     branches:
-      - feat/ios-foundation
+      - "phase1/**"
     paths:
       - 'app/lib/ui/**'
       - 'app/test/ios_tour/**'

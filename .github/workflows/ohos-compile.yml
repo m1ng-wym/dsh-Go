@@ -2,16 +2,12 @@
 # where oh-flutter publishes its AOT tools (app/ohos/README.md). Needs no secrets:
 # packaging and signing a HAP is a later job, once Command Line Tools and a
 # signing profile exist.
-name: OHOS compile
+name: OHOS compile (DEFERRED in Phase 1 — not built; manual only)
 
+# DEFERRED (Phase 1): `app/ohos/**` and `runtime/ohos/**` are kept as iOS build
+# inputs, but the HarmonyOS build is out of Phase 1 scope (plan §3.4; D3=(a)).
+# No automatic triggers; the file stays for the iOS/OHOS shared base layer.
 on:
-  push:
-    branches: ['claude/harmonyos-ohos', 'ohos/**']
-    paths:
-      - 'app/**'
-      - 'packages/**'
-      - 'tooling/ohos/**'
-      - '.github/workflows/ohos-compile.yml'
   workflow_dispatch:
 
 permissions:
