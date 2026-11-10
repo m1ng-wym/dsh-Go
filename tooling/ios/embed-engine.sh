@@ -53,8 +53,13 @@ fi
 GUEST_BUILT="$BUILT/guest"
 # The guest has separate source/toolchain inputs and checks its own cache. It is
 # bundled, but no kernel starts until the user installs Linux and runs a guest job.
-env -i PATH="$PATH" HOME="$HOME" DEVELOPER_DIR="${DEVELOPER_DIR:-}" \
-  /bin/bash "$ROOT/tooling/ios/build-guest-addon.sh" "$PLATFORM_NAME" "$GUEST_BUILT"
+# Phase 1 defers iSH: DSH_IOS_GUEST_BUILD=0 skips it; the default still builds it.
+if [ "${DSH_IOS_GUEST_BUILD:-1}" = "0" ]; then
+  echo "note: guest build skipped: DSH_IOS_GUEST_BUILD=0 (Phase 1)"
+else
+  env -i PATH="$PATH" HOME="$HOME" DEVELOPER_DIR="${DEVELOPER_DIR:-}" \
+    /bin/bash "$ROOT/tooling/ios/build-guest-addon.sh" "$PLATFORM_NAME" "$GUEST_BUILT"
+fi
 
 FRAMEWORKS="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
 RESOURCES="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
@@ -68,7 +73,9 @@ rm -rf "$FRAMEWORKS/NodeMobile.framework/Headers" "$FRAMEWORKS/NodeMobile.framew
   "$FRAMEWORKS/NodeMobile.framework/_CodeSignature"
 cp -R "$BUILT/DshNodeHost.framework" "$FRAMEWORKS/"
 cp -R "$BUILT/DshFlock.framework" "$BUILT/DshRequireBuiltin.framework" "$FRAMEWORKS/"
-cp -R "$GUEST_BUILT/DshGuest.framework" "$GUEST_BUILT/DshGuestBridge.framework" "$FRAMEWORKS/"
+if [ -d "$GUEST_BUILT/DshGuest.framework" ] && [ -d "$GUEST_BUILT/DshGuestBridge.framework" ]; then
+  cp -R "$GUEST_BUILT/DshGuest.framework" "$GUEST_BUILT/DshGuestBridge.framework" "$FRAMEWORKS/"
+fi
 cp "$ENGINE/runtime.zip" "$RESOURCES/dsh-runtime/runtime.zip"
 # The phone tools' backend is iOS's own, so it isn't in the archive runtime/ohos composes.
 mkdir -p "$RESOURCES/dsh-runtime/phone"
@@ -92,6 +99,7 @@ if [ "${CODE_SIGNING_ALLOWED:-YES}" = "NO" ] || [ -z "${EXPANDED_CODE_SIGN_IDENT
   exit 0
 fi
 for item in NodeMobile.framework DshNodeHost.framework DshFlock.framework DshRequireBuiltin.framework DshGuest.framework DshGuestBridge.framework; do
+  [ -d "$FRAMEWORKS/$item" ] || continue
   /usr/bin/codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" ${OTHER_CODE_SIGN_FLAGS:-} \
     --preserve-metadata=identifier,entitlements "$FRAMEWORKS/$item"
 done
