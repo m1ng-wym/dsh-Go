@@ -51,6 +51,7 @@ class MainActivity : FlutterActivity() {
             engine.plugins.add(ShortcutsPlugin())
             engine.plugins.add(io.github.ccch1mneyyy.dsh_app.diagnostics.DiagnosticsPlugin())
             engine.plugins.add(io.github.ccch1mneyyy.dsh_app.media.MediaPlugin())
+            engine.plugins.add(io.github.ccch1mneyyy.dsh_app.media.MediaVideoPlugin())
             engine.plugins.add(io.github.ccch1mneyyy.dsh_app.icons.LauncherIconPlugin())
             engine.plugins.add(io.github.ccch1mneyyy.dsh_app.theme.DynamicColorPlugin())
             engine.plugins.add(io.github.ccch1mneyyy.dsh_app.performance.PerformancePlugin())
@@ -163,6 +164,14 @@ class MainActivity : FlutterActivity() {
         appChannel!!.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getTimeZoneId" -> result.success(TimeZone.getDefault().id)
+                "initializePairingScanner" -> {
+                    try {
+                        io.github.ccch1mneyyy.dsh_app.mlkit.MlKitRuntime.initialize(applicationContext)
+                        result.success(null)
+                    } catch (_: Exception) {
+                        result.error("scanner_initialization_failed", "The barcode scanner could not be initialized", null)
+                    }
+                }
                 // A browser sign-in finished (a Custom Tab on top of this task): clearing down
                 // to this activity closes the tab and shows the app again.
                 // 设置 → 性能 → 刷新率: auto | max | system, and whether Flutter is drawing.
