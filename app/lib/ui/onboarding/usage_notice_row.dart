@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../usage/usage_stats.dart';
+import '../settings/privacy_page.dart';
 import '../settings/settings_widgets.dart';
 import '../theme/theme.dart';
 
@@ -56,9 +57,22 @@ class _UsageNoticeRowState extends ConsumerState<UsageNoticeRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      l10n.usageStatsTitle,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    Tooltip(
+                      message: l10n.commonDetails,
+                      child: GestureDetector(
+                        key: const ValueKey('usage-notice-details'),
+                        behavior: HitTestBehavior.opaque,
+                        // The row is one switch to a screen reader; this tap
+                        // target must not split it into a second node.
+                        excludeFromSemantics: true,
+                        onTap: () => unawaited(
+                          Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PrivacyPage())),
+                        ),
+                        child: Text(
+                          l10n.usageStatsTitle,
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 1),
                     Text(
