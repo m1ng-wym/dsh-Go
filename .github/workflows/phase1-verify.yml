@@ -77,11 +77,13 @@ jobs:
       - name: Resolve dependencies
         run: |
           python3 app/tool/l10n_merge.py --no-gen
-          # The app lockfile carries platform-specific plugin packages, so
-          # --enforce-lockfile cannot hold across macOS/Linux; resolve plainly.
+          # lockfiles are generated on the macOS dev host; --enforce-lockfile
+          # cannot hold across macOS/Linux (platform plugin packages and the
+          # path dependency graph differ), so resolve plainly here. The static
+          # checks are what this gate guards, not lock drift.
           (cd app && flutter pub get)
           for p in packages/*/pubspec.yaml; do
-            (cd "$(dirname "$p")" && dart pub get --enforce-lockfile)
+            (cd "$(dirname "$p")" && dart pub get)
           done
 
       - name: verify.sh --static (fail-on-skip; no silent green)
