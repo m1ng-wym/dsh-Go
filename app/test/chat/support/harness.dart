@@ -404,6 +404,7 @@ class ChatHarness {
     this.newChatCatalogs = false,
     this.chatController,
     this.controllerFactory,
+    this.restoreSelection = false,
     FakePicker? picker,
   }) : sessions = FakeSessions(created: created),
        picker = picker ?? FakePicker();
@@ -435,6 +436,11 @@ class ChatHarness {
   /// [FakeChatController]; suites that need a different recording behavior
   /// pass a subclass here. Takes precedence only when [chatController] is null.
   final FakeChatController Function(String id, ChatState initial)? controllerFactory;
+
+  /// Leave `currentSessionProvider` real, so it restores the last conversation
+  /// from preferences as a relaunch does (PERSIST-01). Off by default: most
+  /// suites pin the conversation through [session].
+  final bool restoreSelection;
   final controllers = <String, FakeChatController>{};
   final balanceRequests = <String>[];
 
@@ -469,7 +475,7 @@ class ChatHarness {
     ],
     sessionUsageProvider.overrideWith2((id) => FakeUsage(id, usage[id] ?? SessionUsage.empty)),
     sessionsProvider.overrideWith(() => sessions),
-    currentSessionProvider.overrideWith(() => FixedSession(session)),
+    if (!restoreSelection) currentSessionProvider.overrideWith(() => FixedSession(session)),
     chatProvider.overrideWith2(
       (id) {
         final direct = chatController?.call(id);
