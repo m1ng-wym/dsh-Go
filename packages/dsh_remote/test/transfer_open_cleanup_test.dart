@@ -9,7 +9,9 @@ import 'support/fake_remote.dart';
 
 // Public per-call deadline, below the existing 25-second health interval.
 const _callTimeout = Duration(seconds: 3);
-const _watchdog = Duration(seconds: 5);
+// Generous enough for a loaded dev host: the transfer path is real Noise +
+// WebSocket traffic over a 3 MiB payload (upstream CI finishes in ~2 s).
+const _watchdog = Duration(seconds: 30);
 final _largeText = 'x' * (3 * 1024 * 1024);
 
 class _Deadline implements Timer {

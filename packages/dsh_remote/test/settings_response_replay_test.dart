@@ -134,7 +134,9 @@ void main() {
     expect(calls, 1);
     expect(host.rpcMethods.where((m) => m == 'harness.remote.transfer.commit'), hasLength(1));
     expect(host.rpcMethods.where((m) => m == 'harness.remote.call'), isEmpty);
-  });
+    // 3 MiB Noise/WebSocket round trip; upstream CI ~8 s, a loaded dev host
+    // needs more than the 30 s default before it flakes.
+  }, timeout: const Timeout(Duration(minutes: 2)));
   for (final endpoint in ['settings/update', 'settings/replace']) {
     test('an oversized $endpoint response is not dispatched twice', () async {
       final client = await connect();
