@@ -18,6 +18,9 @@ void main() {
       clock.elapse(const Duration(seconds: 5)); // 30 s since the last text.
       await h.drainProbeIfSent();
       clock.elapse(const Duration(seconds: 30));
+      // The probe armed by the previous pong fires at the 60 s mark; let the
+      // scripted host answer it before the test tears the socket down.
+      await h.drainProbeIfSent();
 
       expect(h.stream.subscriptionCount, 1);
       expect(h.stream.link, DshGoLink.open);
