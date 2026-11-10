@@ -207,7 +207,10 @@ class DraftStore extends Notifier<DraftState> {
     if (!ref.mounted) return;
     final drafts = state.drafts;
     final savedAttachments = <String, List<Map<String, Object?>>>{};
-    final root = drafts.values.any((draft) => draft.attachments.isNotEmpty) ? await _attachmentRoot() : null;
+    // Resolve the folder even when no draft has attachments: the previous
+    // launch may have left bytes behind, and clearing the last attachment
+    // must delete them instead of leaving them in the sandbox.
+    final root = await _attachmentRoot();
     if (root != null) {
       final keep = <String>{
         for (final MapEntry(:key, :value) in drafts.entries)
@@ -250,6 +253,12 @@ class DraftStore extends Notifier<DraftState> {
           await entity.delete(recursive: true);
         }
       } catch (_) {}
+      if (keep.isEmpty) {
+        // The folder only exists for un-sent attachments; drop it once empty.
+        try {
+          await root.delete(recursive: true);
+        } catch (_) {}
+      }
     }
     final alive = {for (final draft in drafts.values) for (final attachment in draft.attachments) attachment.id};
     _storedNames.removeWhere((id, _) => !alive.contains(id));

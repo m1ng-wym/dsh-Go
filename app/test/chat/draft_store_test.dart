@@ -63,6 +63,25 @@ void main() {
     container.dispose();
   });
 
+  test('clearing the last attachment removes the stored bytes from disk', () async {
+    final dir = Directory.systemTemp.createTempSync('dsh-draft-store-clean');
+    addTearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+    final container = ProviderContainer(
+      overrides: [draftAttachmentRootProvider.overrideWithValue(() async => dir)],
+    );
+    final store = container.read(draftStoreProvider.notifier);
+    store.save('a', '带附件的草稿', [DraftAttachment.sniff('图片.png', tinyPng)]);
+    await store.flush();
+    expect(dir.listSync().whereType<Directory>(), isNotEmpty, reason: 'the attachment folder must exist before the cleanup check');
+    store.clear('a');
+    await store.flush();
+    final leftovers = dir.existsSync() ? dir.listSync(recursive: true) : const <FileSystemEntity>[];
+    expect(leftovers, isEmpty, reason: 'a cleared attachment must not stay in the sandbox');
+    container.dispose();
+  });
+
   test('what was typed before the saved drafts load wins', () async {
     SharedPreferences.setMockInitialValues({
       DraftStore.preferenceKey: jsonEncode({
