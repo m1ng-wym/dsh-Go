@@ -100,7 +100,7 @@
 | N-08 | **远程 fake host/SSH 连接与断线重连** | fake DSH host + fake SSH transport（L4）；本地 sshd（L5 可选） | 连接成功/失败/重连状态正确；不串主机数据；无重复消息 | L4+L5 |
 | N-09 | **主机切换数据隔离** | 集成测试 | 切到另一主机后会话列表只含该主机；切回原主机数据仍在 | L4 |
 | N-10 | **无 skip / 无假绿审计** | verifier 手工 + `verify.sh --full` fail-on-skip | `--full` 无 skip（除非 `--allow-skip` 且报告注明）；回退实现抽查失败 | L0/L5 |
-| N-11 | **性能阈值**（T6 冻结） | 见 §6 | 见 §6 占位 | L5 |
+| N-11 | **性能阈值**（T6 冻结） | 见 §6 | 见 §6（2026-11-10 模拟器实测已冻结；未测项标注 deferred） | L5 |
 | N-12 | **隐私开关与日志脱敏** | L2 + L5 | 统计开关关闭后无网络发送；日志/诊断不含完整 API Key | L2+L5 |
 
 ## 5. 模拟器 vs 真机 deferred 清单（Phase 1）
@@ -121,18 +121,28 @@
 
 > **TODO（T5）**：官方 Flutter 全量测试（936 文件）在 Phase 1 `--full` 的执行范围需确认——建议只跑与 Phase 1 模块相关的官方测试子集（chat/session/files/engine/remote），**排除 goldens**（Linux 字体基线不可在 macOS 跑；具体排除命令在 T5 由实测确定并写入 `verify.sh`）。
 
-## 6. 阈值占位（T6 实测后冻结，示例值以计划 §4.3 为准）
+## 6. 阈值冻结（T6 实测，2026-11-10；模拟器）
 
-| 指标 | 测量方法 | 占位阈值（待 T6） | 冻结后写处 |
-|---|---|---|---|
-| 冷启动可交互（模拟器） | 录屏/埋点：launch→首屏可点 | < 3 s | 本表 + acceptance-report |
-| 引擎启动（install→ready） | `app-check`/驱动计时 | < 10 s（首次安装除外） | 同上 |
-| 引擎停止 | stop→状态 final | < 5 s | 同上 |
-| mock 首 token | 发送→首个 delta | < 2 s | 同上 |
-| 连续启动次数 | 20 次 start/stop 循环 | 20 次无崩溃 | 同上 |
-| 未捕获通道异常 | app-check/日志扫描 | 0 | 同上 |
-| 内存（仅连远程不加载引擎） | 模拟器 instrumentation/Xcode | 基线值 ±10%（T6 记录） | 同上 |
-| 模拟器机型 | iPhone 17 Pro + iPhone SE3 | 两档均过 L4 | 同上 |
+> 测量环境：iPhone 17 Pro 模拟器（iOS 26.5，UDID `1D9F8C91-5739-47B2-BDD0-0FC7207166F3`），debug 构建，代码 SHA `46c0d697`（测量期间分支前进到 CI-only `8d66df6b`，不涉及 App 代码）。原始逐次数值与日志在 workspace `reports/t6/`（不入 repo），汇总见 `reports/T6-baseline-metrics.md`。
+>
+> 口径：冷启动 = `simctl launch` 调用时刻 → `[dsh-startup] first page` 日志时间戳（含命令/进程拉起约 1.1 s；App 内 main→first page 中位 1296 ms 另记）；引擎启动 = `start` 调用 → phase `running`（app-check 250 ms 轮询）；停止 = `stop` → phase `installed`；安装 = `install` → phase `installed`。真机项保持 §5 deferred；未测项不冻结。
+
+| 指标 | 测量方法 | 模拟器实测（原始值 → 统计） | 冻结阈值 | 来源 |
+|---|---|---|---|---|
+| 冷启动可交互（模拟器） | `simctl terminate`+`launch` ×5；另测一次卸载重装后首次启动；log stream ndjson 取 `[dsh-startup] first page` | 稳定态 2402/2384/2380/2414/2339 ms（中位 **2384**，最大 **2414**）；**首次首启 2856 ms**；App 内 main→page 中位 1296 | **< 3500 ms** | `reports/t6/cold-start.json`、`first-launch.json`、`.log` |
+| 引擎安装（全新） | 官方 `app-check --mode engine`：reset 后 install ×3；T7 `d1-01` 全新安装 ×1 | app-check 9286/9999/9296 ms（中位 **9296**，最大 9999）；d1-01 **11 s**、23 条进度事件 | **< 30000 ms** | `reports/t6/app-check-*.log`、`t7-d1-01-l4.json` |
+| 引擎安装（已安装幂等） | 已安装状态下 native `install` / `install again` 各 ×3 | 2223/2099/2117 ms（中位 **2117**）；每次仍重校验（104 条进度事件）。Dart 控制器已安装短路另由 T7 L2 覆盖 | **< 5000 ms**（native 通道）；UI 路径 < 500 ms（L2） | 同上 |
+| 引擎启动（install→ready） | `d1-01` 的 `running at … after Nms` | **3602 ms**（500 ms 轮询粒度） | **< 8000 ms** | `t7-d1-01-l4.json` |
+| 引擎启动（已安装后） | app-check `start` ×3；probe 连续 10 次 `after Nms` | app-check 3110/3066/3069（中位 **3069**）；probe 3062–3073（中位 3065.5） | **< 8000 ms** | `app-check-*.log`、`probe-launch-10x.json` |
+| 引擎停止 | app-check `stop` ×3（→ phase=installed） | 523/519/521 ms；中位 **521**，最大 **523** | **< 3000 ms** | 同上 |
+| 引擎重启（stop→running） | app-check `restart` ×3 | 2923/2990/2966 ms；中位 **2966**，最大 **2990** | **< 8000 ms** | 同上 |
+| mock 首 token | 发送→首个 delta | **未测**：App 内无可编程发模型请求入口（probe 只装/启引擎，`ios_engine_check` 不发 turn），详见报告 §8 | **未冻结（deferred）** | `reports/T6-baseline-metrics.md` §8 |
+| 连续启动次数 | probe 连续 launch ×10，每次须到 `running` | **10/10 成功**，0 崩溃、0 App 异常；20 次未做（时间盒） | **≥10 次连续启动 0 崩溃（已测）**；20 次待 T22 补测 | `probe-launch-10x.log` |
+| 未捕获通道异常 | Runner 日志 error/fault + `DiagnosticReports` 扫描 | **0** 个 App 级异常/崩溃；35 条 `UIKit:UIFocus` 系统提示（非 App 异常） | **0** | `reports/t6/idle-errors.log` |
+| 内存（App 空闲基线；仅连远程不加载引擎的代理项） | `ps -o rss` 模拟器 Runner 进程：冷启动后 2.5 s ×5；空闲 5 min | 847–853 MB（中位 850 MB）；空闲 5 min **993 MB**（1,016,768 KB） | 基线 **993 MB**，验收 **≤ 1093 MB（+10%）** | `cold-start.json`、`idle-rss.txt` |
+| 模拟器机型 | iPhone 17 Pro（本次）；iPhone SE3 | 17 Pro 全部通过；SE3 **未测** | 17 Pro 已测；SE3 待 T22（deferred） | 本表 |
+
+> 说明：① 阈值按「模拟器实测最大值 + ≥20% 余量」取整冻结，仅适用于 Phase 1 模拟器回归，不外推到真机/release；② 内存项实测的是「App 空闲、未启动引擎」，不是真实远程连接场景（该场景 Phase 1 无自动化入口，标 deferred）；③ 已安装幂等的 2.1 s 是 native 通道直调值，UI 路径的立即返回由 Dart 控制器保证（T7 L2），两者不要混用。
 
 ## 7. 验收记录格式
 
