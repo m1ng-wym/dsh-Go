@@ -5,16 +5,8 @@
 name: iOS compile
 
 on:
-  push:
-    branches: ['phase1/**']
-    paths:
-      - 'app/**'
-      - 'packages/**'
-      - 'tooling/ios/**'
-      - 'runtime/ios/**'
-      - 'runtime/ohos/**'
-      - 'runtime/patches/**'
-      - '.github/workflows/ios-compile.yml'
+  # Phase 1 runs the macOS compile locally (docs/specs/phase1/ci.md); the heavy
+  # macOS job is manual-only so ordinary phase1 pushes do not queue ~2 h runs.
   workflow_dispatch:
 
 # Phase 1: iSH/Alpine guest is deferred (see docs/specs/phase1/ci.md). The app build

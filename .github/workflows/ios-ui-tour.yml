@@ -3,14 +3,7 @@ name: iOS UI tour
 # Screenshots and a video of the main screens on the Simulator, for looking at them without a Mac.
 # Much quicker than iOS compile: no engine.
 on:
-  push:
-    branches:
-      - "phase1/**"
-    paths:
-      - 'app/lib/ui/**'
-      - 'app/test/ios_tour/**'
-      - 'tooling/ios/ui-tour.mjs'
-      - '.github/workflows/ios-ui-tour.yml'
+  # Phase 1 keeps the tour manual; see docs/specs/phase1/ci.md.
   workflow_dispatch:
 
 permissions:
