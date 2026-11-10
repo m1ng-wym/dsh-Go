@@ -21,6 +21,19 @@ class RuntimeNotice {
   final String text;
 }
 
+/// Why an install request failed before the native side reported a phase.
+///
+/// Native install failures arrive as a status phase (`error`) with the message in
+/// `status.error`; a request rejected by the bridge itself (missing payload, busy
+/// channel, reset journal, ...) only carries a [PlatformException]. Keeping its
+/// stable code and readable message lets the setup page say what happened rather
+/// than a generic "install failed" line (D1-01-AC3).
+class RuntimeInstallFailure {
+  const RuntimeInstallFailure({required this.code, required this.message});
+  final String code;
+  final String message;
+}
+
 /// What the UI needs to know about the local runtime.
 /// What the engine reported about moving saved paths when the app's container changed
 /// (runtime/ios/storage/preload.mjs). Only ever said on iOS, and said again at every start while
@@ -51,6 +64,7 @@ class LocalRuntimeState {
     this.notice,
     this.available = true,
     this.relocation = const {},
+    this.installFailure,
   });
 
   final RuntimeStatus status;
@@ -69,6 +83,10 @@ class LocalRuntimeState {
   /// What this start of the engine reported; cleared when the next one begins.
   final Set<RelocationIssue> relocation;
 
+  /// The last install request that the bridge rejected before a phase report;
+  /// cleared when a new install starts. Native phase failures use [status].error.
+  final RuntimeInstallFailure? installFailure;
+
   LocalRuntimeState copyWith({
     RuntimeStatus? status,
     RuntimeProgressEvent? progress,
@@ -77,6 +95,8 @@ class LocalRuntimeState {
     RuntimeNotice? notice,
     bool? available,
     Set<RelocationIssue>? relocation,
+    RuntimeInstallFailure? installFailure,
+    bool clearInstallFailure = false,
   }) => LocalRuntimeState(
     status: status ?? this.status,
     progress: clearProgress ? null : (progress ?? this.progress),
@@ -84,6 +104,7 @@ class LocalRuntimeState {
     notice: notice ?? this.notice,
     available: available ?? this.available,
     relocation: relocation ?? this.relocation,
+    installFailure: clearInstallFailure ? null : (installFailure ?? this.installFailure),
   );
 }
 
@@ -142,15 +163,25 @@ class LocalRuntimeController extends Notifier<LocalRuntimeState> {
     }
   }
 
-  Future<void> install() {
-    ref.read(readListCredentialEpochProvider.notifier).advance();
-    return _bridge.install();
-  }
+  Future<void> install() => _install(dropKept: false);
 
   /// Installs without what a reset kept but could not put back.
-  Future<void> installDroppingKept() {
+  Future<void> installDroppingKept() => _install(dropKept: true);
+
+  /// A rejected request is kept for the page's failure line (D1-01-AC3); the
+  /// request itself still fails so callers that await it see the error.
+  Future<void> _install({required bool dropKept}) async {
     ref.read(readListCredentialEpochProvider.notifier).advance();
-    return _bridge.install(dropKept: true);
+    if (state.installFailure != null) state = state.copyWith(clearInstallFailure: true);
+    try {
+      await _bridge.install(dropKept: dropKept);
+    } on PlatformException catch (error) {
+      final message = (error.message ?? '').trim();
+      state = state.copyWith(
+        installFailure: RuntimeInstallFailure(code: error.code, message: message),
+      );
+      rethrow;
+    }
   }
 
   /// The API key is not passed here: it is written to DSH's own credential store

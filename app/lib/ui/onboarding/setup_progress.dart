@@ -39,8 +39,18 @@ class RuntimeInstallController extends Notifier<bool> {
 
   /// [dropKept]: give up what a reset kept but cannot put back.
   Future<void> install({bool dropKept = false}) {
+    final status = ref.read(localRuntimeProvider);
+    // Already installed and current: an install would only re-verify 14k files
+    // (D1-01 AC 错误/边界: 安装成功后重复安装应幂等（版本一致立即完成）).
+    if (!dropKept &&
+        status.status.phase == RuntimePhase.installed &&
+        status.status.installedVersion != null &&
+        status.status.installedVersion == status.status.bundledVersion &&
+        status.installFailure == null) {
+      return Future.value();
+    }
     if (_pending case final pending?) return pending;
-    if (ref.read(localRuntimeProvider).status.phase == RuntimePhase.installing) return Future.value();
+    if (status.status.phase == RuntimePhase.installing) return Future.value();
     final run = _pending = _run(dropKept);
     return run.whenComplete(() {
       if (identical(_pending, run)) _pending = null;
@@ -476,7 +486,9 @@ class _SetupStatusSheet extends ConsumerWidget {
         ? l10n.shellRuntimeReady
         : l10n.shellRuntimePreparing;
     final body = failed
-        ? humanizeRuntimeError(state.status.error) ?? l10n.shellRuntimeExtractFailed
+        ? (state.installFailure?.message.isNotEmpty == true
+              ? state.installFailure!.message
+              : humanizeRuntimeError(state.status.error) ?? l10n.shellRuntimeExtractFailed)
         : ready
         ? l10n.shellRuntimeLocalOnly
         : l10n.shellRuntimeFirstSetup;
