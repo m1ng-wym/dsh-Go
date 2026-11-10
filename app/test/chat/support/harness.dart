@@ -121,6 +121,14 @@ class FakeChatController extends ChatController {
   final answers = <(UserQuestionRequest, List<QuestionAnswer>)>[];
   final models = <ModelSelection>[];
   bool answerSucceeds = true;
+
+  /// Tests that drive the model picker from the chat set this: a successful
+  /// switch then lands in [state] like the real controller's optimistic write.
+  bool applyModelSelection = false;
+
+  /// A switch the engine refuses: no state change, only the error.
+  bool modelSwitchSucceeds = true;
+  String? modelSwitchError;
   Future<bool>? sendResult;
   var cancels = 0;
   var loadOlderCalls = 0;
@@ -207,6 +215,11 @@ class FakeChatController extends ChatController {
   @override
   Future<bool> setModel(ModelSelection selection) async {
     models.add(selection);
+    if (!modelSwitchSucceeds) {
+      state = state.copyWith(error: modelSwitchError ?? '模型切换失败', model: state.model);
+      return false;
+    }
+    if (applyModelSelection) state = state.copyWith(model: selection);
     return true;
   }
 
@@ -389,6 +402,7 @@ class ChatHarness {
     this.runtime,
     this.extra = const [],
     this.newChatCatalogs = false,
+    this.chatController,
     FakePicker? picker,
   }) : sessions = FakeSessions(created: created),
        picker = picker ?? FakePicker();
@@ -411,6 +425,10 @@ class ChatHarness {
   /// Off by default: suites that script their Host's traffic must not leave
   /// catalog requests in flight (test/chat/new_chat_options_test.dart opts in).
   final bool newChatCatalogs;
+
+  /// A controller for the session under test (a test that needs a specific
+  /// model-switch outcome); null builds the usual [FakeChatController].
+  final ChatController Function(String id)? chatController;
   final controllers = <String, FakeChatController>{};
   final balanceRequests = <String>[];
 
@@ -447,7 +465,9 @@ class ChatHarness {
     sessionsProvider.overrideWith(() => sessions),
     currentSessionProvider.overrideWith(() => FixedSession(session)),
     chatProvider.overrideWith2(
-      (id) => controllers[id] = FakeChatController(id, states[id] ?? const ChatState(loading: false)),
+      (id) =>
+          chatController?.call(id) ??
+          (controllers[id] = FakeChatController(id, states[id] ?? const ChatState(loading: false))),
     ),
     ...extra,
   ];
