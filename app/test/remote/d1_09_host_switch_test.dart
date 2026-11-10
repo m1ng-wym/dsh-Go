@@ -7,6 +7,7 @@
 // Fake host/transport only: FakeSshServer/FakeConnector/FakeRelayBackend, no
 // real socket, no real SSH.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dsh_app/remote/link_status.dart';
@@ -274,7 +275,12 @@ void main() {
         ActiveHostController.prefsKey: const HostRef.ssh('ssh-gone').encode(),
       });
       final c = container();
+      final seen = <HostRef>[];
+      final sub = c.listen(activeHostProvider, (_, next) => seen.add(next));
+      addTearDown(sub.close);
       await loaded(c);
+      // Not a vacuous "is local at attach time": the restore first lands on the
+      // saved host, then the missing-host check moves it to 本机.
       await until(
         c,
         activeHostProvider,
@@ -282,14 +288,17 @@ void main() {
         what: '不存在的主机回落到本机',
         timeout: const Duration(seconds: 2),
       );
-      expect(c.read(activeHostProvider), HostRef.local);
+      expect(seen.first, const HostRef.ssh('ssh-gone'), reason: '冷启动先恢复上次主机');
+      expect(seen.last, HostRef.local);
       final prefs = await SharedPreferences.getInstance();
       expect(HostRef.decode(prefs.getString(ActiveHostController.prefsKey)), HostRef.local);
     });
   });
 
   group('D1-09 · 主机切换 UI（L2）', () {
-    HostLinkStatus linkStatus = HostLinkStatus.idle;
+    late StreamController<HostLinkStatus> statuses;
+    setUp(() => statuses = StreamController<HostLinkStatus>.broadcast());
+    tearDown(() => statuses.close());
 
     List<Override> widgetOverrides() => [
       secretStoreProvider.overrideWithValue(secrets),
@@ -299,7 +308,9 @@ void main() {
       // These tests are about what the header/page show for a host and its
       // state; the connection state machine itself is covered above with real
       // fake transports.
-      hostLinkStatusProvider.overrideWith((ref, host) => Stream.value(linkStatus)),
+      hostLinkStatusProvider.overrideWith(
+        (ref, host) => host.isLocal ? Stream.value(HostLinkStatus.idle) : statuses.stream,
+      ),
       urlOpenerProvider.overrideWithValue((_) async => true),
       localRuntimeProvider.overrideWith(
         () => FakeRuntime(
@@ -333,7 +344,6 @@ void main() {
       SharedPreferences.setMockInitialValues({
         HostsController.prefsKey: jsonEncode([sampleSsh.toJson()]),
       });
-      linkStatus = const HostLinkStatus(HostLinkPhase.connected);
       final c = await pump(tester, const _SwitcherLauncher());
       expect(find.textContaining('本机'), findsWidgets, reason: '首次进入停在本机');
       await tester.tap(find.byType(HostChip));
@@ -344,26 +354,46 @@ void main() {
       await frames(tester);
       expect(c.read(activeHostProvider), HostRef.ssh(sampleSsh.id));
       // 当前主机名与连接状态可见（抽屉头部 chip）。
-      await frames(tester, 6);
+      statuses.add(const HostLinkStatus(HostLinkPhase.connected));
+      for (var i = 0; i < 30 && find.text('电脑 · 已连接').evaluate().isEmpty; i++) {
+        await tester.pump(const Duration(milliseconds: 60));
+      }
       expect(find.text('电脑 · 已连接'), findsOneWidget);
     });
 
     testWidgets('D1-09_unreachable_host_shows_retry_and_manage', (tester) async {
       SharedPreferences.setMockInitialValues({
         HostsController.prefsKey: jsonEncode([sampleSsh.toJson()]),
-        ActiveHostController.prefsKey: HostRef.ssh(sampleSsh.id).encode(),
       });
-      linkStatus = const HostLinkStatus(
-        HostLinkPhase.failed,
-        error: HostLinkError(
-          HostLinkErrorKind.unreachable,
-          '连不上这台电脑',
-          retryable: true,
-          detail: '10.0.0.9:22 connection refused',
+      final host = HostRef.ssh(sampleSsh.id);
+      final remote = _FakeRemoteConnection(host);
+      usePhoneSurface(tester);
+      await tester.pumpWidget(
+        goldenApp(
+          home: const RemoteScreen(),
+          brightness: Brightness.light,
+          overrides: [
+            ...widgetOverrides(),
+            activeHostProvider.overrideWith(() => _FixedActiveHost(host)),
+            remoteConnectionProvider(host).overrideWith(() => remote),
+          ],
         ),
       );
-      final c = await pump(tester, const RemoteScreen());
-      await frames(tester, 4);
+      final c = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      statuses.add(
+        const HostLinkStatus(
+          HostLinkPhase.failed,
+          error: HostLinkError(
+            HostLinkErrorKind.unreachable,
+            '连不上这台电脑',
+            retryable: true,
+            detail: '10.0.0.9:22 connection refused',
+          ),
+        ),
+      );
+      await frames(tester);
       // 错误 + 可诊断详情 + 重试入口，且不白屏。
       expect(find.text('连不上这台电脑'), findsOneWidget);
       expect(find.text('详情'), findsOneWidget);
@@ -372,6 +402,17 @@ void main() {
       await tester.tap(find.text('详情'));
       await frames(tester, 3);
       expect(find.textContaining('connection refused'), findsOneWidget);
+
+      // 重试入口真的触发该主机的连接重试；状态恢复后错误卡片消失。
+      await tester.tap(find.text('重试'));
+      await tester.pump();
+      expect(remote.retries, 1);
+      statuses.add(const HostLinkStatus(HostLinkPhase.connected));
+      for (var i = 0; i < 30 && find.text('连不上这台电脑').evaluate().isNotEmpty; i++) {
+        await tester.pump(const Duration(milliseconds: 60));
+      }
+      expect(find.text('连不上这台电脑'), findsNothing);
+      expect(find.text('已连接'), findsOneWidget);
 
       // 仍可切回上一个可用主机。
       await tester.tap(find.text('切回本机'));
@@ -404,4 +445,28 @@ class _SwitcherLauncher extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Active host pinned for a UI test.
+class _FixedActiveHost extends ActiveHostController {
+  _FixedActiveHost(this.host);
+
+  final HostRef host;
+
+  @override
+  HostRef build() => host;
+}
+
+/// Records "重试" without opening a real link.
+class _FakeRemoteConnection extends RemoteConnectionController {
+  _FakeRemoteConnection(super.host);
+
+  int retries = 0;
+
+  @override
+  Future<HostConnection?> build() async => null;
+
+  @override
+  void retry() => retries++;
 }

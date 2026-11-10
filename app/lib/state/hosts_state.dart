@@ -137,6 +137,9 @@ class HostsController extends Notifier<HostsState> {
     } catch (_) {
       // No preferences backend (tests) or a corrupt entry: start empty.
     }
+    // Another provider may have initialized this controller just before the
+    // container went away (a startup disposed while preferences were loading).
+    if (!ref.mounted) return;
     state = HostsState(ssh: hosts, loaded: true);
   }
 
