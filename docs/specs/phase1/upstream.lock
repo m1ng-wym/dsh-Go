@@ -1,0 +1,179 @@
+# Phase 1 上游与工具链锁定（upstream.lock）
+
+> 本文件是 Phase 1 的**版本真源**：任何实现、测试、验收都以此处的 SHA/版本为准。
+> 冻结方式：`spec-phase1-v1` tag；变更需 Lead 批准并更新本文件 + `traceability.md`。
+> 格式：YAML 子集（人类可读、可被后续脚本解析）。
+> 最后核对：2026-11-10（Asia/Shanghai）；核对人：spec-baseline（T4）。
+
+```yaml
+repo:
+  url: "https://github.com/ccch1mneyyy/dsh-Go"
+  license: "AGPL-3.0"          # LICENSE 34,523 B；README badge 同
+  work_dir: "/Users/Zhuanz/Documents/Zenlix/DSH-Go-iOS/repo"   # T1 建立
+
+android_capability_baseline:
+  ref: "main"
+  commit: "aee64450219e21c5d16b127f5f01350697de05da"          # Merge PR #879
+  commit_date: "2026-11-10T04:52:15Z"
+  app_version: "1.0.14+1"                                     # app/pubspec.yaml:23
+  release: "v1.0.14 (2026-11-09)"                             # 只有 Android APK
+  verified_by:
+    - "git -C /tmp/dsh-git cat-file -e aee6445…  → OK"
+    - "research/07-verification.md §1 #1/#2/#14"
+
+ios_code_baseline:
+  ref: "feat/ios-foundation"
+  head_commit: "418868c3c9583cda82356729ec5fffdddd704823"      # 2026-11-09T04:05:21Z
+  head_app_version: "1.0.12+1"                                # app/pubspec.yaml:23（merge main 后应对齐 1.0.14+1）
+  known_good_commit: "ab2d179c33c787601f53495781ea10fc6e26c951" # 最后全绿 run 42546357246
+  known_good_run: "https://github.com/ccch1mneyyy/dsh-Go/actions/runs/42546357246"
+  head_broken_until_fixed:
+    failing_job: "iOS compile / compile"
+    failing_step: "Check where the engine looks for its addons"
+    root_cause: "tooling/ios/embed-engine.sh:75 复制 descriptions.mjs；tooling/ios/test-guest-embedding.py:37 fixture 未同步"
+    fix_task: "T1（一行修复）"
+  merge_base: "3a91fab9e80d2a92be071a74b8b208214d7e6277"      # 2026-11-07T13:14:38Z
+  divergence_at_lock_time: { ahead: 408, behind: 350, status: "diverged" }
+  mirror_backup: "T1 执行：GitHub fork 备份 + refs manifest（计划 §3.1；mirror 位置以 T1 记录为准）"
+
+observed_upstream:
+  # 观察记录：只记录 T1/T4 执行时上游状态，**不改变 merge 目标**。
+  observed_at: "2026-11-10T16:31+08:00（T4 复核 /tmp/dsh-git origin/main + gh api releases/tags/v1.0.15）"
+  upstream_main: "3edc945fcdd950bd06083f9789eaa63f1693564b"   # 观察值；origin/main
+  upstream_main_note: "3edc945f 是 aee6445 之后的 7 个提交（含 release 1.0.15 合并与手机 Shizuku/自 ADB shell 工具等）"
+  v1014_tag_commit: "aee64450219e21c5d16b127f5f01350697de05da"  # v1.0.14（2026-11-09T02:25:45Z 发布，target=main）
+  v1015_release:
+    tag: "v1.0.15"
+    published: "2026-11-10T06:34:25Z"
+    tag_object: "5e4e3b4f726e3add66e8d78935db51b99fe66ae2"
+    commit: "a9877420ab9aee121134faf01b6a92a39ce0b05b"
+    assets: ["dsh-go-1.0.15-arm64.apk", "SHA256SUMS", "update.json"]
+  delta_v1014_to_v1015: "7 commits（aee6445..3edc945f）：a9877420 release 1.0.15 合并、6407a709 feat(phone): add Shizuku and self-ADB shell tool、changelog 统计更新等；主要属 Phase 2 域"
+  merge_target_decision: "按已批准计划锁定合并 **aee6445（v1.0.14）**；不合并 3edc945f / 不合并 v1.0.15"
+  v1015_sync_policy: "v1.0.15 同步推迟到 Phase 1 结束后，按每周 sync 机制评估（delta 涉及手机 Shizuku/环境保留更新/扫码修复等，多属 Phase 2）"
+  divergence_observed:
+    vs_aee6445: { ahead: 408, behind: 350 }
+    vs_upstream_main_3edc945f: { ahead: 408, behind: 357 }   # 分支多落后 7 个提交
+  do_not_write: "文档中不得写‘已合并 3edc945f’；Phase 1 基线只认 aee6445 / 418868c3 / ab2d179c"
+
+t1_result:
+  # T1 实际结果（2026-11-10）；T4 已复核：分支/工作树/合并父提交/版本/ fixture/l10n
+  status: "DONE"
+  phase1_base: "ef8eba5047ce4e4d684fcea6380cd05ac23c7f12"      # chore: phase1 baseline (v1.0.14+1)
+  merge_commit: "52b78cd7a442045124915495e9813bc4502c08dc"      # parents: 418868c3(iOS) + aee6445(main)
+  merged_main_commit: "aee64450219e21c5d16b127f5f01350697de05da" # v1.0.14，按计划
+  repo_upstream_main_ref: "aee64450219e21c5d16b127f5f01350697de05da"  # 实测 git rev-parse upstream/main
+  repo_upstream_ios_ref: "418868c3c9583cda82356729ec5fffdddd704823"
+  repo_origin: "https://github.com/m1ng-wym/dsh-Go（T1 fork 备份；upstream=ccch1mneyyy/dsh-Go）"
+  upstream_online_main_at_t1: "3edc945f（v1.0.15，2026-11-10T06:34:25Z）——T1 未拉进 repo；按计划将 v1.0.15 同步推迟到 Phase 1 结束后每周 sync"
+  worktree_clean: true
+  app_version: "1.0.14+1"
+  merge_conflicts:
+    count: 13
+    files:  # git diff --name-only --diff-filter=U 实测（T1 报告 §3）；pubspec.yaml 不在其中（clean merge）
+      - app/lib/l10n/parts/phone_en.arb
+      - app/lib/l10n/parts/phone_zh.arb
+      - app/lib/l10n/app_en.arb
+      - app/lib/l10n/app_zh.arb
+      - app/lib/l10n/gen/app_localizations.dart
+      - app/lib/l10n/gen/app_localizations_en.dart
+      - app/lib/l10n/gen/app_localizations_zh.dart
+      - app/lib/state/phone_turn_end.dart
+      - app/lib/ui/chat/chat_screen.dart
+      - app/lib/ui/phone/dnd_mode_page.dart
+      - app/lib/ui/phone/phone_control_screen.dart
+      - runtime/patches/pins.json
+      - app/.gitignore
+    resolution: "l10n 7 文件→官方 l10n_merge.py 重新生成（未手改 gen）；4 个 Dart→main v1.0.14 逻辑 + 分支 iOS 依赖行；pins.json 并集 144 条；.gitignore 并集；resolve_t1_conflicts.py 可复跑，无残留 marker"
+    pubspec_note: "app/pubspec.yaml 为 clean merge，版本自然=1.0.14+1（非冲突）"
+  fixture_fix: "ef8eba50 修改 tooling/ios/test-guest-embedding.py（+4/−1）：fixture 补 descriptions.mjs + 断言 dsh-runtime/phone/descriptions.mjs；本地 python3 tooling/ios/test-guest-embedding.py -v → Ran 5 tests OK"
+  l10n: "官方工具重新生成：python3 app/tool/l10n_merge.py --check → 63 parts, 6301 keys OK（T4 复核通过）"
+  backup: "GitHub fork m1ng-wym/dsh-Go（server-side 236 branches，含 feat/ios-foundation@418868c3）+ 本仓库 backup/upstream-refs.txt（233 remote refs）；未做本地 --mirror（网络限制，见 T1 报告 §2/§5）"
+  deviations:  # T1 报告 §5，非阻塞
+    - "B-1 计划 git clone 全量 → 实际 raw CDN 并行下载 + blob SHA 校验 + hash-object 注入（6582/6582 校验通过；内容寻址等价，HEAD 树 6911 blob missing=0）"
+    - "B-2 merge upstream/main → 实际 merge aee6445（v1.0.14，按计划锁定）；上游线上 main=3edc945f/v1.0.15 未拉入"
+    - "B-3 本地 git clone --mirror 备份 → GitHub fork + refs 清单（本地 mirror 需再下 522MB，网络不可行）"
+    - "B-4 origin 改名 upstream → 新增 origin=fork，upstream 保留为上游"
+    - "B-5 合并后官方 CI 门 → 本地 fixture 5/5 + l10n --check + 对象完整性；xcodebuild/engine smoke 属 T3/T5"
+  t1_report: "DSH-Go-iOS/reports/tasks/T1-baseline.md"
+  verified_by_t4: "git log/status/refs/diff + fixture test + l10n --check（2026-11-10T17:06+08:00）"
+
+post_merge_target:
+  base_branch: "phase1/base"          # 从 upstream/feat/ios-foundation 建
+  integration_branch: "phase1/integration"   # Lead 专用
+  expected_app_version: "1.0.14+1"    # merge main 后对齐；记录于 T1 提交
+  expected_conflicts: 13              # 见 design.md §4.2 列表（来自计划 §3.2）
+  deployment_target: "17.0"           # 计划 §1；分支当前 project.pbxproj 为 16.0/15.0 → T3 需改
+  targeted_device_family: "1"         # iPhone only；分支当前 "1,2" → T3 需改
+
+toolchain:
+  flutter: "3.47.7"
+  flutter_sha256: "dd9da574c3168460550117eb0e8dd0313ae934fabf64a82a6d557fff5fd1422e"
+  dart: "3.13"                       # 随 Flutter 3.47.7
+  node: "24.22.1"                    # 引擎/构建与测试；nodejs-mobile v24.22.1-0
+  node_mobile_sha256: "3fa1b8fb0720768b01c2e0dae3a17e788476e8c1613a1d9a54e206793b45326e"
+  node_mobile_addon_commit: "a58d3599a2e551d7d706d1ff796c9fd4bbaff63c"   # tooling/ios/prepare-engine.sh:19
+  python: ">=3.11 (建议 3.12)"       # prepare-engine.sh:31 强制校验
+  xcode: "26.6"                      # /Applications/Xcode_26.6.app；SDK iOS 26.5
+  macos: "26.5.2 (现状，不升级)"
+  simulator_runtime: "iOS 26.5"
+  simulators:
+    - "iPhone 17 Pro (iOS 26.5)"
+    - "iPhone SE (3rd generation) (iOS 26.5)"
+  ios_min_deployment: "17.0"
+  rust_ish: "Phase 1 不启用（Phase 2 再按官方 pin）"
+  ish_source_pin_phase2_only:
+    repo: "OpenMinis/ish-arm64"
+    commit: "c5c264da19148512167aa493d7bd4e50aae1b74e"
+    sha256: "046e17769c9978e21060d465c0610a27a033dba2af92f58f42e7d8bcb6bb36ad"
+
+official_test_baseline:
+  # 复用的官方 CI/测试基线（详见 verification-baseline.md）
+  ci_workflows:
+    ios_compile: ".github/workflows/ios-compile.yml (24,382 B; 3 jobs: phone-protocol/compile/engine)"
+    ios_guest: ".github/workflows/ios-guest.yml (12,515 B)  # Phase 1 可禁用 guest job"
+    ios_ui_tour: ".github/workflows/ios-ui-tour.yml (2,614 B)"
+    ci: ".github/workflows/ci.yml (11,312 B)  # flutter/dart/runtime/android/checks"
+  runner_images: { linux: "ubuntu-24.04", macos: "macos-26" }
+  swift_contract_suites: 14          # ios-compile.yml engine job -only-testing 列表
+  swift_tests_files: 15              # app/ios/RunnerTests，共 8,251 行
+  rust_tests: "82（57 #[test] + 25 #[tokio::test]；文档记录 81/83 passed）"
+  python_tests: "12 个 test 文件 / 70 个 def test"
+  flutter_goldens: 1005              # Linux + Noto 字体基线，Phase 1 暂不跑 macOS
+  apple_acceptance_table: 43         # app/ios/README.md 真机验收表数据行（07 复核口径）
+
+mock_conventions:
+  # 端口/凭据约定见 mocks.md（避免与真实 3080/Remote 服务器冲突）
+  mock_model_port: 3901
+  fake_dsh_host_port: 3902
+  fake_web_port: 3903
+  fake_ssh_port: 3904
+  mock_api_key: "sk-mock-phase1-model"
+  fake_host_token: "mock-host-token-phase1"
+
+freeze:
+  tag: "spec-phase1-v1"
+  frozen_after: ["capability-spec.md", "test-plan.md", "verification-baseline.md", "traceability.md", "mocks.md"]
+  change_policy: "任何 spec 变更 → 更新 traceability + Lead 批准；禁止开发中静默改标准"
+```
+
+## 核对记录（本次实际执行的验证）
+
+| 项 | 命令 | 结果 |
+|---|---|---|
+| android commit 存在 | `git -C /tmp/dsh-git cat-file -e aee6445…` | OK（2026-11-10T12:52+08:00，`Merge pull request #879`） |
+| iOS head 存在 | `git -C /tmp/dsh-git cat-file -e 418868c3…` | OK（2026-11-09T12:05+08:00） |
+| known-good 存在 | `git -C /tmp/dsh-git cat-file -e ab2d179c…` | OK（2026-11-09T09:35+08:00） |
+| merge base 存在 | `git -C /tmp/dsh-git cat-file -e 3a91fab…` | OK（2026-11-07T21:14+08:00） |
+| 版本号 | `grep '^version:' app/pubspec.yaml`（main / ios 快照） | 1.0.14+1 / 1.0.12+1 |
+| NodeMobile pin | `tooling/ios/prepare-engine.sh:16-19` | 24.22.1 / v24.22.1-0 / sha256 / addon commit 全部吻合 |
+| 部署目标现状 | `grep IPHONEOS_DEPLOYMENT_TARGET app/ios/Runner.xcodeproj/project.pbxproj` | 16.0（Runner）/15.0（部分 target）→ **与计划 17.0 不一致；Lead 决策 D2=(a) 按 17.0 改，T3 实测插件可编译性** |
+| 上游 v1.0.15 观察 | `git -C /tmp/dsh-git log --oneline aee6445..origin/main`（7 commits）+ `gh api releases/tags/v1.0.15` | 记录于 `observed_upstream`：upstream/main=3edc945f（v1.0.15，11-10 14:34 发布）；**merge 目标仍钉 aee6445** |
+| 设备族现状 | 同上 `TARGETED_DEVICE_FAMILY` | "1,2" → **与计划 iPhone-only(1) 不一致，T3 需改** |
+
+## TODO-VERIFY（未核实项，不阻塞冻结但必须在 T3/T5 前确认）
+
+1. ~~origin/main 引用漂移~~ **已记录（见 `observed_upstream`）**：观察值 `origin/main=3edc945f`（v1.0.15，2026-11-10T06:34:25Z 发布）；**merge 目标按已批准计划钉 `aee6445`（v1.0.14）**，不合并 3edc945f/v1.0.15。T1 建 repo 后仅需 `git rev-parse upstream/main` 记录一次实测值；不得改写合并目标。
+2. **iOS 17 最低部署目标 vs 分支 16.0/15.0**：Lead 决策 D2=(a) 定 17.0；T3 实测 SPM 插件（flutter_webrtc 等）与 ShareExtension 可编译性，若个别插件要求更高版本则**记录并以实测为准**（不猜）；必要时按 target 分别设置并在 verification-baseline 记录理由。
+3. **Flutter 3.47.7 / Dart 3.13 实际可用性**：本机是否已装（T2 负责），SHA 以官方发布物校验。
+4. **Xcode 26.6 + iOS 26.5 runtime**：Xcode 26.6 是否自带 26.5 SDK/模拟器 runtime，以 T2 `xcrun simctl list runtimes` 为准。

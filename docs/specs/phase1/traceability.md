@@ -1,0 +1,113 @@
+# Phase 1 追溯矩阵（traceability.md）
+
+> 状态：T4-draft（staging）。**规则：缺一行不得合并。**
+> 用途：能力 ID ↔ spec 章节 ↔ 实现文件 ↔ 测试用例 ↔ 验收记录。开发/验收过程中逐行填写；任何 spec 变更需同步本表 + Lead 批准。
+> 图例：`PLANNED` = 已定义但尚未写测试；`RED` = 已写失败测试（附失败原因）；`GREEN` = 测试通过；`L5` = 手工；`DEFERRED` = Phase 1 不做（需在 acceptance-report 说明）；`BLOCKED` = 有阻塞（写明）。
+> 基线行（T1/T3）与 cross-cutting 行见 §1–§2。
+
+## 1. 基线变更（baseline changes，必须先于功能合并完成）
+
+| # | 变更 | 计划/依据 | 实现文件（预期） | 验证 | 状态 |
+|---|---|---|---|---|---|
+| B-1 | fork `feat/ios-foundation@418868c3` → `phase1/base`；备份 | 计划 §3.1 | `phase1/base=ef8eba50`（分支）；`origin`=github.com/m1ng-wym/dsh-Go fork（236 branches）+ `backup/upstream-refs.txt`（233 refs） | `git log --graph` 两父 merge；HEAD 树 6911 blob missing=0；T1 报告 §1/§2 | **DONE（T1，含下载方式偏差 B-1）** |
+| B-2 | 合并计划锁定 main `aee6445`（v1.0.14），解 13 冲突 | 计划 §3.2；design §4.2；T1 报告 §3 | merge commit **`52b78cd7`**（parents `418868c3`+`aee6445`）；13 冲突见 design §4.2；`app/pubspec.yaml` clean=1.0.14+1 | `git status` 干净；`git grep '^<<<<<<<'` 空；resolve_t1_conflicts.py 断言通过 | **DONE（T1）** |
+| B-3 | 修 `test-guest-embedding.py` fixture（补 `descriptions.mjs` + 断言） | 计划 §3.3；upstream.lock `t1_result.fixture_fix` | `tooling/ios/test-guest-embedding.py`（commit **`ef8eba50`**，+4/−1） | `python3 tooling/ios/test-guest-embedding.py -v` → Ran 5 tests OK（T4 复跑 5/5） | **DONE（T1）** |
+| B-4 | app 版本对齐 `1.0.14+1` | 计划 §3.2 | `app/pubspec.yaml:23`；l10n 官方工具重新生成（63 parts/6301 keys） | `grep '^version:' app/pubspec.yaml`；`l10n_merge.py --check` OK（T4 复核） | **DONE（T1）** |
+| B-5 | 部署目标改 iOS 17.0、`TARGETED_DEVICE_FAMILY=1` | 计划 §1；Lead D2=(a)；upstream.lock TODO-VERIFY #2 | `app/ios/Runner.xcodeproj/project.pbxproj`（各 target） | 模拟器构建 + `xcodebuild -showBuildSettings`；SPM 插件可编译性实测 | PLANNED（T3） |
+| B-6 | 禁用 OHOS workflow 触发（保留 `runtime/ohos` 源码） | 计划 §3.4；design ADR-2；Lead D3=(a) | `.github/workflows/ohos-compile.yml`（删除触发/文件） | workflow 列表 | PLANNED（T5） |
+| B-7 | 建立 `scripts/verify.sh` 三档 + mock 骨架 | 计划 §4.2/§7.1；Lead D5=(a) | `scripts/verify.sh`、`test/fixtures/mock_model_server.mjs`（已移入 `repo/scripts/`、`repo/test/fixtures/`） | `verify.sh --list` exit 0；`--static`（Flutter 3.47.7 下）**exit 0 / pass=7 fail=0 skip=0**（T4-fix 后 Lead 修复 2 个 merge 遗留 analyze 错误：`phone_control_screen.dart:543` 的 `_stopTask(int?)` 调用点、`companion_recall_room_test.dart:61` 的 `_Bridge.get` override 参数；见 T4-fix 报告 §5 与本行备注）；`--self-test` 5/5；mock `--self-test` 16/16 | **DONE（T4-fix + Lead 产品修复，static 绿）** |
+
+### 1.1 冻结 commit 范围（供 Lead 打 tag）
+
+- **T1 基线**：`ef8eba50`（`phase1/base`；含 merge `52b78cd7` + fixture 修复）。
+- **T4 spec 提交**：本轮移入的 8 文档 + `repo/scripts/verify.sh` + `repo/test/fixtures/mock_model_server.mjs`（由 Lead 提交，T4 不做 git 操作）。
+- **建议 tag**：`spec-phase1-v1` 打在**该 spec 提交**上（`ef8eba50` 的直系子提交）；范围 = `ef8eba50..<spec commit>`，仅新增 `docs/specs/phase1/**`、`scripts/verify.sh`、`test/fixtures/mock_model_server.mjs`，不含产品代码。
+- 冻结后：`docs/specs/phase1/**` 的任何变更走本表 + Lead 批准。
+
+## 2. 能力 AC 追溯表（逐行）
+
+| AC | spec | 实现文件（预期，分支真实路径） | 测试用例（PLANNED） | 层级 | 类型 | 验收记录 | 状态 |
+|---|---|---|---|---|---|---|---|
+| D1-01-AC1 | capability-spec.md#D1-01 | app/ios/Runner/EngineChannel.swift:660; app/ios/Runner/EngineRuntime.swift; app/lib/runtime/runtime_bridge.dart; app/lib/runtime/runtime_state.dart; app/lib/ui/engine/engine_screen.dart | `D1-01_install_progress_to_installed` | L4 | auto | （空） | PLANNED |
+| D1-01-AC2 | capability-spec.md#D1-01 | app/ios/Runner/EngineChannel.swift:660; app/ios/Runner/EngineRuntime.swift; app/lib/runtime/runtime_bridge.dart; app/lib/runtime/runtime_state.dart; app/lib/ui/engine/engine_screen.dart | `D1-01_install_resumes_after_terminate` | L4+L5 | auto+manual | （空） | PLANNED |
+| D1-01-AC3 | capability-spec.md#D1-01 | app/ios/Runner/EngineChannel.swift:660; app/ios/Runner/EngineRuntime.swift; app/lib/runtime/runtime_bridge.dart; app/lib/runtime/runtime_state.dart; app/lib/ui/engine/engine_screen.dart | `D1-01_install_failure_shows_retry` | L2+L5 | auto+manual | （空） | PLANNED |
+| D1-02-AC1 | capability-spec.md#D1-02 | app/ios/Runner/EngineChannel.swift:665,670,679; app/ios/Runner/EngineRuntime.swift; runtime/ios/host/node_runner.cc:232-265; app/lib/runtime/runtime_state.dart; app/lib/state/engine_control.dart | `D1-02_start_stop_interrupts_turn` | L2+L4 | auto | （空） | PLANNED |
+| D1-02-AC2 | capability-spec.md#D1-02 | app/ios/Runner/EngineChannel.swift:665,670,679; app/ios/Runner/EngineRuntime.swift; runtime/ios/host/node_runner.cc:232-265; app/lib/runtime/runtime_state.dart; app/lib/state/engine_control.dart | `D1-02_restart_after_stop_without_relaunch` | L4+L5 | auto+manual | （空） | PLANNED |
+| D1-02-AC3 | capability-spec.md#D1-02 | app/ios/Runner/EngineChannel.swift:665,670,679; app/ios/Runner/EngineRuntime.swift; runtime/ios/host/node_runner.cc:232-265; app/lib/runtime/runtime_state.dart; app/lib/state/engine_control.dart | `D1-02_auto_start_follows_setting` | L4 | auto | （空） | PLANNED |
+| D1-02-AC4 | capability-spec.md#D1-02 | app/ios/Runner/EngineChannel.swift:665,670,679; app/ios/Runner/EngineRuntime.swift; runtime/ios/host/node_runner.cc:232-265; app/lib/runtime/runtime_state.dart; app/lib/state/engine_control.dart | `D1-02_double_start_is_idempotent` | L2 | auto | （空） | PLANNED |
+| D1-04-AC1 | capability-spec.md#D1-04 | app/ios/Runner/EngineChannel.swift:681,683,690; app/ios/Runner/DiagnosticsChannel.swift; app/lib/ui/engine/log_view.dart; app/lib/diagnostics/ | `D1-04_log_snapshot_does_not_overlap_events` | L1+L2+L4 | auto | （空） | PLANNED |
+| D1-04-AC2 | capability-spec.md#D1-04 | app/ios/Runner/EngineChannel.swift:681,683,690; app/ios/Runner/DiagnosticsChannel.swift; app/lib/ui/engine/log_view.dart; app/lib/diagnostics/ | `D1-04_start_failure_shows_reason` | L2+L5 | auto+manual | （空） | PLANNED |
+| D1-04-AC3 | capability-spec.md#D1-04 | app/ios/Runner/EngineChannel.swift:681,683,690; app/ios/Runner/DiagnosticsChannel.swift; app/lib/ui/engine/log_view.dart; app/lib/diagnostics/ | `D1-04_logs_mask_credentials` | L1 | auto | （空） | PLANNED |
+| D2-01-AC1 | capability-spec.md#D2-01 | app/lib/ui/onboarding/onboarding_flow.dart; connect_page.dart; runtime_choice.dart; local_install.dart; setup_progress.dart; welcome_page.dart; api_key_page.dart | `D2-01_onboarding_choice_local_vs_remote` | L2 | auto | （空） | PLANNED |
+| D2-01-AC2 | capability-spec.md#D2-01 | app/lib/ui/onboarding/onboarding_flow.dart; connect_page.dart; runtime_choice.dart; local_install.dart; setup_progress.dart; welcome_page.dart; api_key_page.dart | `D2-01_onboarding_minimal_permissions` | L5 | manual | （空） | PLANNED |
+| D2-01-AC3 | capability-spec.md#D2-01 | app/lib/ui/onboarding/onboarding_flow.dart; connect_page.dart; runtime_choice.dart; local_install.dart; setup_progress.dart; welcome_page.dart; api_key_page.dart | `D2-01_onboarding_not_repeated_after_complete` | L2 | auto | （空） | PLANNED |
+| D2-03-AC1 | capability-spec.md#D2-03 | app/lib/ui/providers/provider_form_page.dart; app/lib/ui/engine_settings/; app/lib/secrets/secure_storage.dart; packages/dsh_client/lib/src/engine_settings_api.dart | `D2-03_add_custom_provider_saves_key_to_keychain` | L2+L4 | auto | （空） | PLANNED |
+| D2-03-AC2 | capability-spec.md#D2-03 | app/lib/ui/providers/provider_form_page.dart; app/lib/ui/engine_settings/; app/lib/secrets/secure_storage.dart; packages/dsh_client/lib/src/engine_settings_api.dart | `D2-03_invalid_base_url_shows_error` | L2 | auto | （空） | PLANNED |
+| D2-03-AC3 | capability-spec.md#D2-03 | app/lib/ui/providers/provider_form_page.dart; app/lib/ui/engine_settings/; app/lib/secrets/secure_storage.dart; packages/dsh_client/lib/src/engine_settings_api.dart | `D2-03_edit_provider_isolated_to_one_channel` | L2 | auto | （空） | PLANNED |
+| D2-04-AC1 | capability-spec.md#D2-04 | app/lib/ui/chat/model_sheet.dart; app/lib/ui/chat/chat_header.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D2-04_switch_model_applies_to_next_turn` | L2+L4 | auto | （空） | PLANNED |
+| D2-04-AC2 | capability-spec.md#D2-04 | app/lib/ui/chat/model_sheet.dart; app/lib/ui/chat/chat_header.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D2-04_thinking_levels_hidden_when_unsupported` | L2+L4 | auto | （空） | PLANNED |
+| D2-04-AC3 | capability-spec.md#D2-04 | app/lib/ui/chat/model_sheet.dart; app/lib/ui/chat/chat_header.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D2-04_switch_failure_keeps_previous_model` | L2 | auto | （空） | PLANNED |
+| D3-01-AC1 | capability-spec.md#D3-01 | app/lib/ui/chat/empty_state.dart; composer.dart; chat_screen.dart; app/lib/state/chat_state.dart; app/lib/state/sessions_state.dart | `D3-01_first_message_creates_session` | L2+L4 | auto | （空） | PLANNED |
+| D3-01-AC2 | capability-spec.md#D3-01 | app/lib/ui/chat/empty_state.dart; composer.dart; chat_screen.dart; app/lib/state/chat_state.dart; app/lib/state/sessions_state.dart | `D3-01_send_without_host_shows_error` | L2 | auto | （空） | PLANNED |
+| D3-02-AC1 | capability-spec.md#D3-02 | app/lib/state/chat_state.dart; app/lib/ui/chat/chat_rows.dart; chat_list.dart; turn_summary.dart; packages/dsh_client/lib/src/mux.dart | `D3-02_stream_appends_chunks_incrementally` | L2+L4 | auto | （空） | PLANNED |
+| D3-02-AC2 | capability-spec.md#D3-02 | app/lib/state/chat_state.dart; app/lib/ui/chat/chat_rows.dart; chat_list.dart; turn_summary.dart; packages/dsh_client/lib/src/mux.dart | `D3-02_thinking_collapsed_shows_preview` | L2 | auto | （空） | PLANNED |
+| D3-02-AC3 | capability-spec.md#D3-02 | app/lib/state/chat_state.dart; app/lib/ui/chat/chat_rows.dart; chat_list.dart; turn_summary.dart; packages/dsh_client/lib/src/mux.dart | `D3-02_stream_error_shows_retry_state` | L2+L4 | auto | （空） | PLANNED |
+| D3-03-AC1 | capability-spec.md#D3-03 | app/lib/state/chat_state.dart; app/lib/ui/chat/composer.dart; packages/dsh_client/lib/src/session_api.dart | `D3-03_steer_does_not_abort_turn` | L2+L4 | auto | （空） | PLANNED |
+| D3-03-AC2 | capability-spec.md#D3-03 | app/lib/state/chat_state.dart; app/lib/ui/chat/composer.dart; packages/dsh_client/lib/src/session_api.dart | `D3-03_steer_failure_restores_draft` | L2 | auto | （空） | PLANNED |
+| D3-04-AC1 | capability-spec.md#D3-04 | app/lib/state/chat_state.dart; app/lib/ui/chat/composer.dart | `D3-04_queued_message_sends_after_turn` | L2+L4 | auto | （空） | PLANNED |
+| D3-04-AC2 | capability-spec.md#D3-04 | app/lib/state/chat_state.dart; app/lib/ui/chat/composer.dart | `D3-04_withdraw_returns_text_to_composer` | L2 | auto | （空） | PLANNED |
+| D3-05-AC1 | capability-spec.md#D3-05 | app/lib/state/chat_state.dart; app/lib/ui/chat/composer.dart; packages/dsh_client/lib/src/session_api.dart | `D3-05_stop_ends_turn_and_keeps_partial` | L2+L4 | auto | （空） | PLANNED |
+| D3-05-AC2 | capability-spec.md#D3-05 | app/lib/state/chat_state.dart; app/lib/ui/chat/composer.dart; packages/dsh_client/lib/src/session_api.dart | `D3-05_stop_then_queue_starts_next` | L2+L4 | auto | （空） | PLANNED |
+| D3-05-AC3 | capability-spec.md#D3-05 | app/lib/state/chat_state.dart; app/lib/ui/chat/composer.dart; packages/dsh_client/lib/src/session_api.dart | `D3-05_stop_timeout_reports_unknown` | L2 | auto | （空） | PLANNED |
+| D3-06-AC1 | capability-spec.md#D3-06 | app/lib/ui/chat/chat_rows.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-06_allow_once_executes_tool_once` | L3+L4 | auto | （空） | PLANNED |
+| D3-06-AC2 | capability-spec.md#D3-06 | app/lib/ui/chat/chat_rows.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-06_deny_approval_blocks_tool` | L3+L4 | auto | （空） | PLANNED |
+| D3-06-AC3 | capability-spec.md#D3-06 | app/lib/ui/chat/chat_rows.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-06_auto_allow_resets_after_restart` | L2+L4 | auto | （空） | PLANNED |
+| D3-07-AC1 | capability-spec.md#D3-07 | app/lib/ui/chat/chat_rows.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-07_question_answer_submits_once` | L2+L4 | auto | （空） | PLANNED |
+| D3-07-AC2 | capability-spec.md#D3-07 | app/lib/ui/chat/chat_rows.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-07_plan_review_requires_choice` | L2+L4 | auto | （空） | PLANNED |
+| D3-08-AC1 | capability-spec.md#D3-08 | app/lib/ui/chat/tool_view.dart; chat_rows.dart; turn_summary.dart; packages/dsh_client/lib/src/session_api.dart | `D3-08_tool_row_summary_and_expand` | L2 | auto | （空） | PLANNED |
+| D3-08-AC2 | capability-spec.md#D3-08 | app/lib/ui/chat/tool_view.dart; chat_rows.dart; turn_summary.dart; packages/dsh_client/lib/src/session_api.dart | `D3-08_turn_folds_into_completed_summary` | L2 | auto | （空） | PLANNED |
+| D3-08-AC3 | capability-spec.md#D3-08 | app/lib/ui/chat/tool_view.dart; chat_rows.dart; turn_summary.dart; packages/dsh_client/lib/src/session_api.dart | `D3-08_failed_tool_row_shows_error` | L2 | auto | （空） | PLANNED |
+| D3-19-AC1 | capability-spec.md#D3-19 | app/lib/ui/chat/chat_rows.dart; secret_mask.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-19_copy_and_fork_from_message` | L2+L5 | auto+manual | （空） | PLANNED |
+| D3-19-AC2 | capability-spec.md#D3-19 | app/lib/ui/chat/chat_rows.dart; secret_mask.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-19_regenerate_only_on_last_answer` | L2+L4 | auto | （空） | PLANNED |
+| D3-19-AC3 | capability-spec.md#D3-19 | app/lib/ui/chat/chat_rows.dart; secret_mask.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D3-19_quote_block_attached_to_message` | L2 | auto | （空） | PLANNED |
+| D4-01-AC1 | capability-spec.md#D4-01 | app/lib/ui/shell/sessions_drawer.dart; home_shell.dart; app/lib/state/sessions_state.dart | `D4-01_drawer_lists_and_switches_sessions` | L2+L4 | auto | （空） | PLANNED |
+| D4-01-AC2 | capability-spec.md#D4-01 | app/lib/ui/shell/sessions_drawer.dart; home_shell.dart; app/lib/state/sessions_state.dart | `D4-01_drawer_filters_unread` | L2 | auto | （空） | PLANNED |
+| D4-01-AC3 | capability-spec.md#D4-01 | app/lib/ui/shell/sessions_drawer.dart; home_shell.dart; app/lib/state/sessions_state.dart | `D4-01_sessions_follow_current_host` | L2+L4 | auto | （空） | PLANNED |
+| D4-03-AC1 | capability-spec.md#D4-03 | app/lib/ui/shell/session_search_page.dart; sessions_drawer.dart; app/lib/state/sessions_state.dart; packages/dsh_client/lib/src/session_api.dart | `D4-03_search_multi_keyword_and_highlight` | L1+L2 | auto | （空） | PLANNED |
+| D4-03-AC2 | capability-spec.md#D4-03 | app/lib/ui/shell/session_search_page.dart; sessions_drawer.dart; app/lib/state/sessions_state.dart; packages/dsh_client/lib/src/session_api.dart | `D4-03_search_without_index_title_only` | L4+L5 | auto+manual | （空） | PLANNED |
+| D4-05-AC1 | capability-spec.md#D4-05 | app/lib/ui/files/files_page.dart; workspace_browser.dart; file_glyph.dart; table_view.dart; app/ios/Runner/NativeFilesChannel.swift; packages/dsh_client/lib/src/files_api.dart | `D4-05_workspace_lists_and_previews_text` | L2+L4+L5 | auto+manual | （空） | PLANNED |
+| D4-05-AC2 | capability-spec.md#D4-05 | app/lib/ui/files/files_page.dart; workspace_browser.dart; file_glyph.dart; table_view.dart; app/ios/Runner/NativeFilesChannel.swift; packages/dsh_client/lib/src/files_api.dart | `D4-05_preview_missing_file_shows_error` | L2 | auto | （空） | PLANNED |
+| D4-05-AC3 | capability-spec.md#D4-05 | app/lib/ui/files/files_page.dart; workspace_browser.dart; file_glyph.dart; table_view.dart; app/ios/Runner/NativeFilesChannel.swift; packages/dsh_client/lib/src/files_api.dart | `D4-05_workspace_refreshes_after_agent_write` | L4 | auto | （空） | PLANNED |
+| D4-07-AC1 | capability-spec.md#D4-07 | app/lib/ui/chat/media/; app/lib/media/; app/lib/state/attachments.dart; draft_store.dart; app/ios/Runner/NativeMediaChannel.swift | `D4-07_attachment_tray_shows_selected_photos` | L2+L5 | auto+manual | （空） | PLANNED |
+| D4-07-AC2 | capability-spec.md#D4-07 | app/lib/ui/chat/media/; app/lib/media/; app/lib/state/attachments.dart; draft_store.dart; app/ios/Runner/NativeMediaChannel.swift | `D4-07_reject_more_than_nine_attachments` | L2 | auto | （空） | PLANNED |
+| D4-07-AC3 | capability-spec.md#D4-07 | app/lib/ui/chat/media/; app/lib/media/; app/lib/state/attachments.dart; draft_store.dart; app/ios/Runner/NativeMediaChannel.swift | `D4-07_draft_attachments_survive_relaunch` | L4+L5 | auto+manual | （空） | PLANNED |
+| D9-01-AC1 | capability-spec.md#D9-01 | app/lib/ui/settings/privacy_page.dart; app/ios/Runner/UsageChannel.swift | `D9-01_privacy_toggle_visible_on_first_run` | L2+L5 | auto+manual | （空） | PLANNED |
+| D9-01-AC2 | capability-spec.md#D9-01 | app/lib/ui/settings/privacy_page.dart; app/ios/Runner/UsageChannel.swift | `D9-01_no_usage_network_call_when_off` | L2+L5 | auto+manual | （空） | PLANNED |
+| D9-01-AC3 | capability-spec.md#D9-01 | app/lib/ui/settings/privacy_page.dart; docs/guide/zh/11-faq.md:80-88 | `D9-01_privacy_page_lists_data_classes` | L5 | manual | （空） | PLANNED |
+| D1-09-AC1 | capability-spec.md#D1-09 | app/lib/ui/remote/host_switcher.dart; host_status.dart; remote_screen.dart; app/lib/state/hosts_state.dart; connection_state.dart | `D1-09_switch_host_updates_sessions` | L2+L4 | auto | （空） | PLANNED |
+| D1-09-AC2 | capability-spec.md#D1-09 | app/lib/ui/remote/host_switcher.dart; host_status.dart; remote_screen.dart; app/lib/state/hosts_state.dart; connection_state.dart | `D1-09_reconnect_last_host_on_cold_start` | L2+L4 | auto | （空） | PLANNED |
+| D1-09-AC3 | capability-spec.md#D1-09 | app/lib/ui/remote/host_switcher.dart; host_status.dart; remote_screen.dart; app/lib/state/hosts_state.dart; connection_state.dart | `D1-09_unreachable_host_keeps_previous` | L2+L4 | auto | （空） | PLANNED |
+| D1-10-AC1 | capability-spec.md#D1-10 | app/lib/remote/ssh/*.dart; app/lib/ui/remote/ssh_host_form.dart; link_progress.dart; app/lib/remote/secret_store.dart | `D1-10_add_ssh_host_requires_fingerprint_trust` | L2+L5 | auto+manual | （空） | PLANNED |
+| D1-10-AC2 | capability-spec.md#D1-10 | app/lib/remote/ssh/*.dart; app/lib/ui/remote/ssh_host_form.dart; link_progress.dart; app/lib/remote/secret_store.dart | `D1-10_ssh_connect_and_stream_message` | L4+L5 | auto+manual | （空） | PLANNED |
+| D1-10-AC3 | capability-spec.md#D1-10 | app/lib/remote/ssh/*.dart; app/lib/ui/remote/ssh_host_form.dart; link_progress.dart; app/lib/remote/secret_store.dart | `D1-10_ssh_auth_failure_shows_error` | L2+L5 | auto+manual | （空） | PLANNED |
+| D1-11-AC1 | capability-spec.md#D1-11 | packages/dsh_remote/lib/dsh_remote.dart; src/state.dart; app/lib/remote/relay/relay_backend.dart; dsh_remote_backend.dart; webrtc_peer.dart; network_route.dart; app/lib/ui/remote/relay_login_sheet.dart | `D1-11_remote_connect_lists_sessions` | L4+L5 | auto+manual | （空） | PLANNED |
+| D1-11-AC2 | capability-spec.md#D1-11 | packages/dsh_remote/lib/dsh_remote.dart; src/state.dart; app/lib/remote/relay/relay_backend.dart; dsh_remote_backend.dart; webrtc_peer.dart; network_route.dart; app/lib/ui/remote/relay_login_sheet.dart | `D1-11_remote_reconnect_no_duplicate` | L4 | auto | （空） | PLANNED |
+| D1-11-AC3 | capability-spec.md#D1-11 | packages/dsh_remote/lib/dsh_remote.dart; src/state.dart; app/lib/remote/relay/relay_backend.dart; dsh_remote_backend.dart; webrtc_peer.dart; network_route.dart; app/lib/ui/remote/relay_login_sheet.dart | `D1-11_terminal_entry_hidden_phase1` | L2 | auto | （空） | PLANNED |
+| PERSIST-01-AC1 | capability-spec.md#PERSIST-01 | app/lib/state/unknown_results.dart:15-60; draft_store.dart; runtime_state.dart; app/ios/Runner/EngineRuntime.swift; app/lib/state/chat_state.dart | `PERSIST-01_relaunch_keeps_conversation` | L4+L5 | auto+manual | （空） | PLANNED |
+| PERSIST-01-AC2 | capability-spec.md#PERSIST-01 | app/lib/state/unknown_results.dart:15-60; draft_store.dart; runtime_state.dart; app/ios/Runner/EngineRuntime.swift; app/lib/state/chat_state.dart | `PERSIST-01_engine_restart_keeps_conversation` | L4 | auto | （空） | PLANNED |
+| PERSIST-01-AC3 | capability-spec.md#PERSIST-01 | app/lib/state/unknown_results.dart:15-60; draft_store.dart; runtime_state.dart; app/ios/Runner/EngineRuntime.swift; app/lib/state/chat_state.dart | `PERSIST-01_unknown_result_blocks_reexecution` | L2+L5 | auto+manual | （空） | PLANNED |
+| PERSIST-01-AC4 | capability-spec.md#PERSIST-01 | app/lib/state/unknown_results.dart:15-60; draft_store.dart; runtime_state.dart; app/ios/Runner/EngineRuntime.swift; app/lib/state/chat_state.dart | `PERSIST-01_engine_crash_recoverable` | L4 | auto | （空） | PLANNED |
+
+## 3. 图例与填报说明
+
+- **AC 行必须与 `capability-spec.md` 一一对应**：新增/修改 AC 时，先改 spec 再改本表（同一 PR）。
+- **实现文件**：开发完成后填**实际**文件与行（替换"预期"）；若与预期不同，需在 PR 说明原因。
+- **测试用例**：填真实测试函数名（Dart/Node/Swift）或 L5 验收步骤编号（对应 `acceptance-checklist.md`）。
+- **验收记录**：填 `acceptance-report.md` 的条目 ID 或 T6/T22 记录链接；L4 需附模拟器名称/构建 SHA。
+- **状态**：PLANNED → RED（附失败输出到任务记录）→ GREEN → ACCEPTED（verifier PASS + Lead 合并）。
+- **禁止**：状态为 GREEN 但测试只断言 mock 调用；L6 deferred 未在 acceptance-report 标注；跳过测试未说明。
+
+## 4. 统计（自动检查用）
+
+- 能力 ID：24；AC 行：69。
+- 目标：Phase 1 合并前 `PLANNED`/`RED` = 0（全部 GREEN 或 DEFERRED-with-reason）。
