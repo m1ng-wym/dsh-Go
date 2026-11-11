@@ -4,8 +4,82 @@ import Security
 import Darwin
 import Flutter
 
+/// Owns the phone tool's URLSession. Every request creates and resumes its task
+/// synchronously on the main actor before it first awaits, so `retire()` (also
+/// main-actor) can never invalidate the session between a request reading it and
+/// the task being created. `data(for:)` did not offer that ordering: it created
+/// the task after hopping off the main actor, and invalidating the session in
+/// that window raised an uncatchable NSInvalidArgumentException.
 @MainActor
-final class IOSPhoneBridge: NSObject, URLSessionTaskDelegate {
+final class IOSPhoneHTTP: NSObject, URLSessionTaskDelegate {
+  private final class Transfer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var task: URLSessionTask?
+    func hold(_ task: URLSessionTask) {
+      lock.lock(); self.task = task; lock.unlock()
+    }
+    func cancel() {
+      lock.lock(); let task = self.task; lock.unlock(); task?.cancel()
+    }
+  }
+  private let configuration: () -> URLSessionConfiguration
+  private var session: URLSession?
+  init(configuration: @escaping () -> URLSessionConfiguration = IOSPhoneHTTP.ephemeral) {
+    self.configuration = configuration
+    super.init()
+  }
+  nonisolated private static func ephemeral() -> URLSessionConfiguration {
+    let config = URLSessionConfiguration.ephemeral
+    config.httpCookieStorage = nil
+    config.httpShouldSetCookies = false
+    config.connectionProxyDictionary = [:]
+    config.timeoutIntervalForRequest = 4
+    return config
+  }
+  func open() { session = URLSession(configuration: configuration(), delegate: self, delegateQueue: nil) }
+  func retire() {
+    session?.invalidateAndCancel()
+    session = nil
+  }
+  nonisolated func urlSession(_ session: URLSession, task: URLSessionTask,
+    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+    completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
+  func post(to endpoint: URL, token: String, runId: String, route: String,
+            values: [String: Any]) async throws -> (Int, Data) {
+    guard let session else { throw URLError(.cancelled) }
+    var body = values; body["runId"] = runId
+    var request = URLRequest(url: endpoint.appendingPathComponent(route))
+    request.httpMethod = "POST"
+    request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+    let transfer = Transfer()
+    let (bytes, response) = try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<(Data, URLResponse), Error>) in
+        // The body runs synchronously here, on the main actor, so this is the one
+        // place a task may be created: retire() cannot interleave with it.
+        let task = session.dataTask(with: request) { data, response, error in
+          if let error {
+            continuation.resume(throwing: error)
+          } else if let response {
+            continuation.resume(returning: (data ?? Data(), response))
+          } else {
+            continuation.resume(throwing: URLError(.badServerResponse))
+          }
+        }
+        transfer.hold(task)
+        task.resume()
+      }
+    } onCancel: {
+      transfer.cancel()
+    }
+    guard bytes.count <= 32768, let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+    return (http.statusCode, bytes)
+  }
+}
+
+@MainActor
+final class IOSPhoneBridge: NSObject {
   private struct Endpoint: Decodable { let v: Int; let runId: String; let baseUrl: String }
   private struct Claimed: Decodable { let request: IOSPhoneRequest? }
   private typealias Arm = @convention(c) (UnsafePointer<CChar>, UnsafePointer<CChar>) -> Int32
@@ -17,6 +91,7 @@ final class IOSPhoneBridge: NSObject, URLSessionTaskDelegate {
   private let runner: IOSPhoneRunner
   private let system: IOSSystemTools
   private let runtimeCurrent: () -> Bool
+  private let http: IOSPhoneHTTP
   private var directory: URL?
   private var runId: String?
   private var token: String?
@@ -24,16 +99,7 @@ final class IOSPhoneBridge: NSObject, URLSessionTaskDelegate {
   private var active: IOSPhoneRequest?
   private var poller: Task<Void, Never>?
   private var operation: Task<Void, Never>?
-  private var session: URLSession?
   private var finishingPhoneTask = false
-  private func makeSession() -> URLSession {
-    let config = URLSessionConfiguration.ephemeral
-    config.httpCookieStorage = nil
-    config.httpShouldSetCookies = false
-    config.connectionProxyDictionary = [:]
-    config.timeoutIntervalForRequest = 4
-    return URLSession(configuration: config, delegate: self, delegateQueue: nil)
-  }
   // nativeLibrary is the already loaded DshNodeHost framework handle, retained
   // by NativeEngine for the lifetime of the runner and its linked modules.
   init(presenter: @escaping () -> UIViewController?, runtimeCurrent: @escaping () -> Bool,
@@ -47,12 +113,10 @@ final class IOSPhoneBridge: NSObject, URLSessionTaskDelegate {
     self.runner = IOSPhoneRunner(actions: actions)
     self.system = IOSSystemTools(actions: actions, presenter: presenter)
     self.runtimeCurrent = runtimeCurrent
+    self.http = IOSPhoneHTTP()
     super.init()
     IOSPhoneControl.shared.bind(self)
   }
-  nonisolated func urlSession(_ session: URLSession, task: URLSessionTask,
-    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
-    completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
 
   // Only public generation and endpoint directory go in the Cordis overlay.
   // Secret exists only in Swift, C memory and the consuming Node environment.
@@ -73,7 +137,7 @@ final class IOSPhoneBridge: NSObject, URLSessionTaskDelegate {
       throw CocoaError(.executableRuntimeMismatch)
     }
     self.directory = directory; runId = generation; token = credential
-    session = makeSession()
+    http.open()
     IOSPhoneControl.shared.bind(self)
     return (directory, generation)
   }
@@ -91,7 +155,7 @@ final class IOSPhoneBridge: NSObject, URLSessionTaskDelegate {
   }
   func retire() {
     poller?.cancel(); poller = nil
-    session?.invalidateAndCancel(); session = nil
+    http.retire()
     browser.retire()
     runner.retire()
     system.retire()
@@ -179,16 +243,8 @@ final class IOSPhoneBridge: NSObject, URLSessionTaskDelegate {
     return url
   }
   private func post(_ route: String, _ values: [String: Any] = [:]) async throws -> (Int, Data) {
-    guard let endpoint, let runId, let token, let session else { throw URLError(.cancelled) }
-    var body = values; body["runId"] = runId
-    var request = URLRequest(url: endpoint.appendingPathComponent(route))
-    request.httpMethod = "POST"
-    request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.httpBody = try JSONSerialization.data(withJSONObject: body)
-    let (bytes, response) = try await session.data(for: request)
-    guard bytes.count <= 32768, let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-    return (http.statusCode, bytes)
+    guard let endpoint, let runId, let token else { throw URLError(.cancelled) }
+    return try await http.post(to: endpoint, token: token, runId: runId, route: route, values: values)
   }
   private func poll(_ generation: String) async {
     guard !finishingPhoneTask || active != nil else { return }

@@ -45,6 +45,7 @@
 		D5480000000000000000F103 /* PhoneRunnerBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000F101 /* PhoneRunnerBootstrap.swift */; };
 		D5480000000000000000F105 /* IOSPhoneSelfRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000F104 /* IOSPhoneSelfRunner.swift */; };
 		D5480000000000000000F107 /* IOSPhoneSelfRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000F106 /* IOSPhoneSelfRunnerTests.swift */; };
+		D5490000000000000000A001 /* IOSPhoneHTTPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5490000000000000000A002 /* IOSPhoneHTTPTests.swift */; };
 		D5480000000000000000E00A /* PhoneRunnerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000E009 /* PhoneRunnerUITests.swift */; };
 		D5480000000000000000E00C /* PhoneRunnerSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000E00B /* PhoneRunnerSupport.m */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
@@ -175,6 +176,7 @@
 		D5480000000000000000F101 /* PhoneRunnerBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneRunnerBootstrap.swift; sourceTree = "<group>"; };
 		D5480000000000000000F104 /* IOSPhoneSelfRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSPhoneSelfRunner.swift; sourceTree = "<group>"; };
 		D5480000000000000000F106 /* IOSPhoneSelfRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSPhoneSelfRunnerTests.swift; sourceTree = "<group>"; };
+		D5490000000000000000A002 /* IOSPhoneHTTPTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSPhoneHTTPTests.swift; sourceTree = "<group>"; };
 		D5480000000000000000E009 /* PhoneRunnerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneRunnerUITests.swift; sourceTree = "<group>"; };
 		D5480000000000000000E00B /* PhoneRunnerSupport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PhoneRunnerSupport.m; sourceTree = "<group>"; };
 		D5480000000000000000E00D /* PhoneRunnerSupport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PhoneRunnerSupport.h; sourceTree = "<group>"; };
@@ -277,6 +279,7 @@
 				D55000000000000000000602 /* IOSAudioSessionCoordinatorTests.swift */,
 				D55000000000000000000502 /* IOSCompanionVoiceTests.swift */,
 				D5480000000000000000F106 /* IOSPhoneSelfRunnerTests.swift */,
+				D5490000000000000000A002 /* IOSPhoneHTTPTests.swift */,
 				D55000000000000000000402 /* IOSPhoneCoreDeviceTests.swift */,
 				D55000000000000000000410 /* IOSPhoneResultEnvelopeTests.swift */,
 				D5500000000000000000040E /* IOSPhoneTaskConsentTests.swift */,
@@ -641,6 +644,7 @@
 				D55000000000000000000603 /* IOSAudioSessionCoordinatorTests.swift in Sources */,
 				D55000000000000000000503 /* IOSCompanionVoiceTests.swift in Sources */,
 				D5480000000000000000F107 /* IOSPhoneSelfRunnerTests.swift in Sources */,
+				D5490000000000000000A001 /* IOSPhoneHTTPTests.swift in Sources */,
 				D55000000000000000000403 /* IOSPhoneCoreDeviceTests.swift in Sources */,
 				D55000000000000000000411 /* IOSPhoneResultEnvelopeTests.swift in Sources */,
 				D5500000000000000000040F /* IOSPhoneTaskConsentTests.swift in Sources */,
