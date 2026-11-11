@@ -434,7 +434,18 @@ class ChatController extends Notifier<ChatState> {
   _ChatOperation? _stoppingOperation;
   bool _dirty = false;
   ModelSelection? _model;
+
+  /// The model last applied before [_model]. A model that disappears falls
+  /// back here when it is still available.
+  ModelSelection? _previousModel;
+
+  /// Models a catalog actually advertised while the person selected them. A
+  /// catalog that never held the current model is not evidence of deletion
+  /// (it can be a cached or unrelated snapshot); only a model that was seen
+  /// and then disappears triggers the pre-send check.
+  final _knownModels = <String>{};
   Object? _modelChange;
+  Object? _modelRecovery;
   bool _defaultModelSaveFailed = false;
   Object? _historyRead;
   List<PendingPrompt> _pending = const [];
@@ -530,6 +541,8 @@ class ChatController extends Notifier<ChatState> {
       _retireHostRequests();
       _approvalHost = host;
       _defaultModelSaveFailed = false;
+      _previousModel = null;
+      _knownModels.clear();
       _approvalScope = Object();
       _autoApprove = false;
       _autoAnswered = const {};
@@ -872,6 +885,9 @@ class ChatController extends Notifier<ChatState> {
             };
             for (final end in endings) {
               _settleClaims(end);
+            }
+            if (event is TurnEndedEvent && _isMissingModelFailure(event.reason.error)) {
+              unawaited(_recoverMissingModel());
             }
             if (event is UserMessageEvent) {
               _dropEchoed([event]);
@@ -1297,6 +1313,10 @@ class ChatController extends Notifier<ChatState> {
     if (!_canControl && (mode == SendMode.interrupt || !await waitForSync())) return false;
     if (!ref.mounted || !identical(client, _client) || !_canControl) return false;
     final operation = _ChatOperation(ref, client, _syncScope);
+    // A model deleted since the picker's catalog was read must not admit a
+    // prompt that can only fail its turn. The caller gets the draft back on
+    // false; nothing was sent, so a retry is a new, safe submission.
+    if (!await _modelStillAvailable(operation)) return false;
     final content = _contentKey(body, attachments);
     final retrying = _unsettled?.content == content;
     final requestId = retrying ? _unsettled!.requestId : _requestId();
@@ -1842,6 +1862,11 @@ class ChatController extends Notifier<ChatState> {
     final generation = client.mux.generation;
     final attempt = Object();
     _modelChange = attempt;
+    // Remember what an already-loaded catalog advertised for this selection;
+    // a later catalog that does not list it is evidence it was deleted.
+    // (Never start a catalog read from here: selection must not depend on it.)
+    final catalog = ref.exists(modelCatalogProvider) ? ref.read(modelCatalogProvider).value : null;
+    if (catalog != null && findModel(catalog, selection) != null) _knownModels.add(_modelKey(selection));
     // Model selection is valid before the first follow snapshot. Its owner
     // is the build/client/mux and latest choice, not the send/stop sync gate.
     bool current() =>
@@ -1863,6 +1888,7 @@ class ChatController extends Notifier<ChatState> {
       );
       if (!current()) return false;
       _model = result.selected;
+      if (previous != null && !_sameModel(previous, result.selected)) _previousModel = previous;
       switch (result.defaultSave?.status) {
         case ModelDefaultSaveStatus.failed:
           _defaultModelSaveFailed = true;
@@ -1909,6 +1935,114 @@ class ChatController extends Notifier<ChatState> {
     } finally {
       if (identical(_modelChange, attempt)) _modelChange = null;
     }
+  }
+
+  /// Turn failure codes that mean the selected model itself is gone. Other
+  /// failures (AUTH, QUOTA, transport) are left to their own recovery: they
+  /// must not move the person to another model.
+  static const Set<String> _missingModelCodes = {'UNKNOWN_MODEL'};
+
+  static bool _isMissingModelFailure(LlmFailure? failure) =>
+      failure != null && _missingModelCodes.contains(failure.code);
+
+  static bool _sameModel(ModelSelection a, ModelSelection b) => a.provider == b.provider && a.model == b.model;
+
+  static String _modelKey(ModelSelection selection) => '${selection.provider}\u0000${selection.model}';
+
+  /// Before prompt admission: a loaded catalog that no longer has the
+  /// selected model is confirmed with a fresh read, then the session moves to
+  /// an available model and the send is refused (the caller keeps the draft).
+  /// An absent or stale catalog never blocks a send; the turn-failure path
+  /// covers the race where the model disappears after admission.
+  Future<bool> _modelStillAvailable(_ChatOperation operation) async {
+    final selection = _model;
+    // A catalog nobody read yet is not evidence about the model, and starting
+    // its read here would add an RPC to every first send.
+    final loaded = ref.exists(modelCatalogProvider) ? ref.read(modelCatalogProvider).value : null;
+    if (selection == null || loaded == null) return true;
+    if (findModel(loaded, selection) != null) {
+      _knownModels.add(_modelKey(selection));
+      return true;
+    }
+    if (!_knownModels.contains(_modelKey(selection))) return true;
+    final fresh = await _readFreshCatalog();
+    if (!_currentOperation(operation)) return false;
+    if (fresh == null || findModel(fresh, selection) != null) return true;
+    await _fallBackFromMissingModel(fresh, selection);
+    return false;
+  }
+
+  /// `session/modelCatalog` as the engine answers it now; null when the read
+  /// failed, in which case the caller leaves the selection alone.
+  Future<ModelCatalog?> _readFreshCatalog() async {
+    try {
+      ref.invalidate(modelCatalogProvider);
+      return await ref.read(modelCatalogProvider.future);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// A turn ended with the adapter's `UNKNOWN_MODEL`. The prompt was already
+  /// admitted, so only the next message may use the fallback: never send the
+  /// failed prompt again on our own.
+  Future<void> _recoverMissingModel() async {
+    final selection = _model;
+    if (selection == null || _modelRecovery != null) return;
+    final attempt = _modelRecovery = Object();
+    try {
+      final fresh = await _readFreshCatalog();
+      if (!ref.mounted || !identical(_modelRecovery, attempt)) return;
+      if (fresh == null || findModel(fresh, selection) != null) return;
+      // The person may have chosen another model while the catalog loaded.
+      if (_model == null || !_sameModel(_model!, selection)) return;
+      await _fallBackFromMissingModel(fresh, selection);
+    } finally {
+      if (identical(_modelRecovery, attempt)) _modelRecovery = null;
+    }
+  }
+
+  /// Switch to the remembered previous model, else the catalog's default,
+  /// else the first available one. With nothing available the banner says the
+  /// model is unusable and the selection is left for the models page. The
+  /// switch is attempted once; a lost reply is not retried blindly.
+  Future<void> _fallBackFromMissingModel(ModelCatalog catalog, ModelSelection missing) async {
+    final fallback = _fallbackSelection(catalog, missing);
+    if (fallback == null) {
+      state = state.copyWith(error: appL10n.stateChatModelUnavailable);
+      return;
+    }
+    _knownModels.add(_modelKey(fallback));
+    final switched = await setModel(fallback);
+    if (!ref.mounted || !switched) return;
+    state = state.copyWith(error: appL10n.stateChatModelUnavailable);
+  }
+
+  ModelSelection? _fallbackSelection(ModelCatalog catalog, ModelSelection missing) {
+    bool available(ModelSelection selection) =>
+        !_sameModel(selection, missing) && findModel(catalog, selection) != null;
+    final previous = _previousModel;
+    if (previous != null && available(previous)) return _withSupportedEffort(catalog, previous);
+    final standard = catalog.defaultSelection;
+    if (standard != null && available(standard)) return _withSupportedEffort(catalog, standard);
+    for (final model in catalog.models) {
+      final candidate = ModelSelection(provider: model.provider, model: model.id);
+      if (available(candidate)) return _withSupportedEffort(catalog, candidate);
+    }
+    return null;
+  }
+
+  /// A remembered effort may not exist on the fallback model; use that
+  /// model's starting effort instead of letting selectModel refuse the switch.
+  ModelSelection _withSupportedEffort(ModelCatalog catalog, ModelSelection selection) {
+    final model = findModel(catalog, selection);
+    final effort = selection.reasoningEffort;
+    if (model == null || effort == null || model.efforts.any((entry) => entry.id == effort)) return selection;
+    return ModelSelection(
+      provider: selection.provider,
+      model: selection.model,
+      reasoningEffort: startingEffort(model),
+    );
   }
 
   Future<void> loadOlder() async {

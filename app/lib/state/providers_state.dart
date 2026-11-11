@@ -578,8 +578,11 @@ class ProviderActions {
 
   /// Creates (no [existing]) or updates a provider on the active engine and
   /// stores its key. The profile is written first, then the key, as the
-  /// official page does; if only the key fails, the [ProviderFailure] carries
-  /// the new id.
+  /// official page does. A failed key write compensates the profile write (a
+  /// new route is removed, an edit is restored to the profile read before it),
+  /// so a failed save never leaves a half-written provider behind. If the
+  /// compensation also fails, the failure carries both reasons and, for a new
+  /// route, the id so the form can fix its key.
   Future<String> save(ProviderDraft draft, {CustomProvider? existing}) async {
     // The form checks every row; a caller that builds a draft itself (a test,
     // an import) still must not write a header map the adapter will reject.
@@ -591,9 +594,11 @@ class ProviderActions {
     final name = draft.effectiveName;
     final String id;
     final String keyRef;
+    // Read back first: the id must not land on a route someone just added,
+    // and an update needs the exact profile it is about to replace.
+    final current = await backend.read();
+    final prior = existing == null ? null : current?.byRoute(existing.id) ?? _profileOf(existing);
     if (existing == null) {
-      // Read back first: the id must not land on a route someone just added.
-      final current = await backend.read();
       id = newProviderId(
         name: draft.name,
         baseUrl: draft.baseUrl,
@@ -633,7 +638,21 @@ class ProviderActions {
       try {
         await backend.storeKey(keyRef, draft.apiKey);
       } catch (error) {
-        throw ProviderFailure(appL10n.stateProviderKeySaveFailed(describeProviderError(error)), savedId: id);
+        final failure = await _compensateFailedKeyWrite(
+          backend: backend,
+          id: id,
+          keyRef: keyRef,
+          keyError: error,
+          created: existing == null,
+          prior: prior,
+          keyAdded: existing == null || existing.apiKeyEnv == null,
+        );
+        // The engine changed even though the save failed; the list must show
+        // the rolled-back state rather than the optimistic one.
+        _ref
+          ..invalidate(customProvidersProvider)
+          ..invalidate(modelCatalogProvider);
+        throw failure;
       }
       if (backend.isLocal) {
         try {
@@ -650,6 +669,74 @@ class ProviderActions {
       ..invalidate(modelCatalogProvider);
     return id;
   }
+
+  /// Undo the profile write of [save] after its key write failed. Never logs
+  /// or echoes the key; each reason is the user-facing description only.
+  Future<ProviderFailure> _compensateFailedKeyWrite({
+    required ProviderBackend backend,
+    required String id,
+    required String keyRef,
+    required Object keyError,
+    required bool created,
+    required ProviderProfile? prior,
+    required bool keyAdded,
+  }) async {
+    final reasons = <String>[describeProviderError(keyError)];
+    String? savedId;
+    try {
+      if (created) {
+        await backend.remove(id);
+      } else if (prior != null) {
+        await backend.update(
+          id,
+          displayName: prior.displayName ?? '',
+          api: prior.protocol,
+          baseUrl: prior.baseUrl,
+          models: prior.models,
+          headers: {...prior.headers},
+          clearApiKeyEnv: keyAdded,
+        );
+      } else {
+        // The profile was written but its before-snapshot is gone; leaving it
+        // would silently keep the half-applied edit.
+        reasons.add(appL10n.commonFailedTryAgain);
+      }
+    } catch (compensation) {
+      reasons.add(describeProviderError(compensation));
+      if (created) {
+        // The route still exists and only lacks its key: let the form switch
+        // to editing it so 保存 retries the key write.
+        savedId = id;
+      }
+    }
+    // A partially written credential must not outlive a route that no longer
+    // names it (create) or a route that was keyless before (update). The key
+    // reference is unique to the route; the create key write is the only one
+    // that could have partially landed.
+    if (created || keyAdded) {
+      try {
+        await backend.clearKey(keyRef);
+      } catch (_) {
+        // The route is gone/keyless again; an orphan credential is harmless.
+      }
+    }
+    return ProviderFailure(
+      appL10n.engineProviderSaveFailed(reasons.join(' · ')),
+      savedId: savedId,
+    );
+  }
+
+  /// A [ProviderProfile] from the display DTO, for a rollback when the engine
+  /// read (unexpectedly) no longer holds the route.
+  static ProviderProfile _profileOf(CustomProvider provider) => ProviderProfile(
+    route: provider.id,
+    displayName: provider.displayName,
+    api: provider.api?.wire,
+    baseUrl: provider.baseUrl,
+    apiKeyEnv: provider.apiKeyEnv,
+    models: provider.models,
+    headers: provider.headers,
+  );
 
   /// Replaces one model of [provider] (matched by id) with [model]: only the
   /// `models` list is written, so nothing else of the profile changes.
