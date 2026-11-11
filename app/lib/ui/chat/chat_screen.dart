@@ -105,6 +105,10 @@ import 'widgets/quote_chip.dart';
 import 'widgets/read_only_bar.dart';
 import 'widgets/unknown_results_banner.dart';
 
+/// 建会话的结果。会话已建好时 [sessionId] 非空；引擎在建会话途中停止/重启时
+/// [superseded] 为 true——什么都没建成，发送可以等新连接就绪后重试一次。
+typedef _SessionCreation = ({String? sessionId, bool superseded});
+
 /// 聊天页:玻璃顶栏 + 消息列表 + 玻璃输入条。
 ///
 /// 读 [currentSessionProvider];为 null 时是"新对话"空状态,第一次发送时
@@ -299,6 +303,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   /// 没有会话时的错误(建会话失败),会话内的错误走 ChatState.error。
   String? _localError;
 
+  /// A send is waiting for the engine to come back after a stop→start, so a
+  /// second send waits for that one instead of creating another session.
+  bool _awaitingReconnect = false;
+
   @override
   void initState() {
     super.initState();
@@ -465,8 +473,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   /// The open session, or a new one (create → select → apply the model picked
-  /// on the new-chat screen). Null when it could not be created.
-  Future<String?> _ensureSession({required bool Function() isCurrent}) async {
+  /// on the new-chat screen). Null when it could not be created — or when the
+  /// page/draft that asked for it moved on. A create interrupted by the engine
+  /// going away (stop→start) comes back as `superseded` so its send can retry.
+  Future<_SessionCreation?> _ensureSession({required bool Function() isCurrent}) async {
     if (!isCurrent()) return null;
     final current = ref.read(currentSessionProvider);
     if (current != null) {
@@ -476,11 +486,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       final host = ref.read(activeHostProvider);
       final owed = ref.read(owedSetupsProvider.notifier).of(host, current);
       if (owed != null && !await _applyOwedSetup(host, current, owed, isCurrent)) return null;
-      return current;
+      return (sessionId: current, superseded: false);
     }
     if (_creating != null) return null;
     final host = ref.read(activeHostProvider);
     final pendingFolder = ref.read(pendingSessionFolderProvider);
+    // What this create starts on: another connection (or generation) when it
+    // rejects means the engine went away and a send may retry on the new one.
+    final client = ref.read(activeConnectionProvider).value?.client;
+    final generation = client?.mux.generation;
     final attempt = Object();
     bool ownsCreation() => identical(_creating, attempt) && isCurrent();
     setState(() {
@@ -492,10 +506,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       try {
         sessionId = await ref.read(sessionsProvider.notifier).create();
       } catch (e) {
+        // A stop→start under the create: nothing was created, the draft is
+        // untouched. The caller waits for the new connection and retries once.
+        if (_creationSuperseded(e, client, generation) &&
+            ref.read(activeHostProvider) == host &&
+            _newChatStillWanted(attempt)) {
+          return (sessionId: null, superseded: true);
+        }
         if (ownsCreation()) {
           setState(() => _localError = chatErrorText(e, action: appL10n.chatCreateFailed));
         }
-        return null;
+        return (sessionId: null, superseded: false);
       }
       // A completed create may outlive its page, client or new-chat draft.
       // Check before any selection, migration, deletion or model side effect.
@@ -539,11 +560,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         if (!await _applyOwedSetup(host, sessionId, setup, ownsCreation)) return null;
       }
       if (!ownsCreation() || _draftKey != sessionId || ref.read(currentSessionProvider) != sessionId) return null;
-      return sessionId;
+      return (sessionId: sessionId, superseded: false);
     } finally {
       if (mounted && identical(_creating, attempt)) setState(() => _creating = null);
     }
   }
+
+  /// The link is gone, rather than the Host refusing the create itself.
+  bool _connectionLost(Object error) =>
+      error is DshClosedException || error is DshCarrierLostException || error is DshTransportException;
+
+  /// The create lost its owner to a connection change. The SessionsController
+  /// is rebuilt with the new connection and its in-flight owner retires: that
+  /// is the exact `session creation superseded` error. A link that went away
+  /// underneath the create counts as superseded too.
+  bool _creationSuperseded(Object error, DshClient? client, MuxGeneration? generation) {
+    if (error is DshClosedException && error.message == 'session creation superseded') return true;
+    return _connectionLost(error) && _connectionReplaced(client, generation);
+  }
+
+  /// The connection (or its generation) is no longer the one the create began
+  /// on: the engine was stopped, restarted or replaced.
+  bool _connectionReplaced(DshClient? client, MuxGeneration? generation) {
+    final active = ref.read(activeConnectionProvider).value?.client;
+    if (active == null || !identical(active, client)) return true;
+    return !identical(active.mux.generation, generation);
+  }
+
+  /// The page still wants the new chat that started [attempt]: the person has
+  /// not selected another conversation, and no newer create took over.
+  bool _newChatStillWanted(Object attempt) =>
+      mounted &&
+      _draftKey == 'new' &&
+      ref.read(currentSessionProvider) == null &&
+      (_creating == null || identical(_creating, attempt));
 
   /// Applies what [sessionId] still owes from the new-chat screen before its
   /// first prompt: the preset first (it may bring its own defaults), then the
@@ -595,16 +645,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     }
   }
 
-  Future<void> _send({SendMode mode = SendMode.now}) async {
+  Future<void> _send({SendMode mode = SendMode.now, bool retryingAfterReconnect = false}) async {
     // The `@` picker is open on a typed name: sending picks its marked row.
     if (_mentions.pickHighlighted()) return;
     final typed = _input.text.trim();
     final drafts = _drafts;
     if ((typed.isEmpty && drafts.isEmpty) || _creating != null || _syncWait != null) return;
+    if (_awaitingReconnect && !retryingAfterReconnect) return;
     // Generation mode: an ordinary message whose first line is the
     // parameter header (media-generation §8, revision of 2026-10-28).
     final generate = ref.read(generateModeProvider).byKey[_draftKey];
     if (generate != null && !_generateReady(generate, typed, drafts)) return;
+    final host = ref.read(activeHostProvider);
     final client = ref.read(activeConnectionProvider).value?.client;
     if (client == null) return;
     final generation = client.mux.generation;
@@ -643,8 +695,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       }
     }
 
-    final sessionId = await _ensureSession(isCurrent: ownsDraft);
-    if (sessionId == null || !ownsDraft() || _draftKey != sessionId) return;
+    final ensured = await _ensureSession(isCurrent: ownsDraft);
+    if (ensured == null) return;
+    final sessionId = ensured.sessionId;
+    if (sessionId == null) {
+      if (ensured.superseded) {
+        if (retryingAfterReconnect) {
+          // The engine went away a second time: no more retries, say so.
+          if (_sendStillWanted(host: host, typed: typed, drafts: drafts, quote: quote)) {
+            setState(
+              () => _localError = chatErrorText(
+                const DshClosedException('session creation superseded'),
+                action: appL10n.chatCreateFailed,
+              ),
+            );
+          }
+        } else {
+          await _retrySendAfterReconnect(
+            mode: mode,
+            host: host,
+            typed: typed,
+            drafts: drafts,
+            quote: quote,
+          );
+        }
+      }
+      return;
+    }
+    if (!ownsDraft() || _draftKey != sessionId) return;
     final chat = ref.read(chatProvider(sessionId).notifier);
     if (!ref.read(chatProvider(sessionId)).controlReady) {
       if (mode == SendMode.interrupt) return;
@@ -697,6 +775,66 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     }
     if (!ok && _sameConnection(client, generation)) _giveBack(sessionId, typed, drafts, quote: quote);
   }
+
+  /// The engine went away while this new-chat send was creating its session.
+  /// Wait (bounded) for the restarted connection, then send the same draft
+  /// once on it. Anything the person changed meanwhile wins: no create, no
+  /// send, and the draft still sits in the composer.
+  Future<void> _retrySendAfterReconnect({
+    required SendMode mode,
+    required HostRef host,
+    required String typed,
+    required List<DraftAttachment> drafts,
+    required String? quote,
+  }) async {
+    _awaitingReconnect = true;
+    try {
+      final ready = await _waitForCreationReady();
+      if (!_sendStillWanted(host: host, typed: typed, drafts: drafts, quote: quote)) return;
+      if (!ready) {
+        setState(
+          () => _localError = chatErrorText(
+            const DshClosedException('session creation superseded'),
+            action: appL10n.chatCreateFailed,
+          ),
+        );
+        return;
+      }
+      await _send(mode: mode, retryingAfterReconnect: true);
+    } finally {
+      _awaitingReconnect = false;
+    }
+  }
+
+  /// Waits (bounded) until the connection and the session list are ready for
+  /// a create again. An engine restart rebuilds the SessionsController; the
+  /// retry has to run on that new owner, not the retired one.
+  Future<bool> _waitForCreationReady() async {
+    const timeout = Duration(seconds: 30);
+    final clock = Stopwatch()..start();
+    while (mounted && clock.elapsed < timeout) {
+      final connection = ref.read(activeConnectionProvider);
+      final sessions = ref.read(sessionsProvider);
+      if (connection.value?.client != null && !connection.isLoading && !sessions.isLoading) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return false;
+  }
+
+  /// The draft this send carries is still exactly what the person wrote.
+  bool _sendStillWanted({
+    required HostRef host,
+    required String typed,
+    required List<DraftAttachment> drafts,
+    required String? quote,
+  }) =>
+      mounted &&
+      _draftKey == 'new' &&
+      ref.read(currentSessionProvider) == null &&
+      ref.read(activeHostProvider) == host &&
+      _input.text.trim() == typed &&
+      identical(_drafts, drafts) &&
+      ref.read(composerQuoteProvider)['new'] == quote;
 
   // A failed send belongs to the Host that accepted it. The controller may
   // retire its continuation after reconnect; do not restore its draft into a
@@ -1362,7 +1500,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         final drafts = _drafts;
         final quote = ref.read(composerQuoteProvider)[_draftKey];
         bool ownsDraft() => identical(_draftScope, scope) && _sameConnection(client, generation);
-        final sessionId = await _ensureSession(isCurrent: ownsDraft);
+        final ensured = await _ensureSession(isCurrent: ownsDraft);
+        final sessionId = ensured?.sessionId;
         if (sessionId == null ||
             !ownsDraft() ||
             _draftKey != sessionId ||
