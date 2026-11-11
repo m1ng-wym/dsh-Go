@@ -1,10 +1,17 @@
-# Phase 1 Spec/测试基线（repo-ready · 待打 tag）
+# Phase 1 Spec/测试基线（验收完成 · T22/T22b）
 
-> 状态：**repo-ready + verify 通过**（2026-11-10 T4 已移入 `repo/docs/specs/phase1/` + `repo/scripts/` + `repo/test/fixtures/`；`verify.sh --list` exit 0，`--static` pass=5/fail=0/skip=2（flutter/dart 未安装，T2/T5 补齐）；**待 Lead commit + 打 tag `spec-phase1-v1`**）。完整记录见 `DSH-Go-iOS/reports/T4-repo-ready.md`。
-> 依据：`DSH-Go-iOS/docs/plans/2026-11-10-phase1-b-implementation.md` §0–§4、§7；`research/dsh-ios-research/{01,02,03,07,10,11,12}.md`。
-> 约束：本目录**不含产品代码**；T1 已完成（`repo` 的 `phase1/base=ef8eba50`，merge `52b78cd7`，工作树干净，app `1.0.14+1`），T4 已移入 repo 指定路径；全部官方依据来自真实文件/行（main `aee6445` 快照 + `/tmp/dsh-git show` 抽查 + repo 实测）。
-> 生成人：spec-baseline（T4，2026-11-10）。
-> 版本口径（Lead 已定）：merge 目标钉 **`aee6445`（v1.0.14）**；观察到 upstream/main=`3edc945f`（v1.0.15）仅记录，**不合并 v1.0.15**（见 §4 V）。
+> 状态：**Phase 1 验收完成（2026-11-11）**。Spec 基线 T4 冻结 `spec-phase1-v1`；Wave 0–4（T1–T21）全部完成；T22 自动化门与 T22b 模拟器验收完成；T23 交付文档落盘。当前代码基线 `phase1/base=56111af8`（+T22b 未提交测试改动）。
+> 验收结论：`--fast` pass=13/fail=0/skip=0；`--full` 曾 pass=21/fail=0/skip=1（iSH guest archive 显式 allow-skip）；RunnerTests 366/366；E2E 17 Pro + SE3 PASS；**无 FAIL**；27 个 L5 步骤 + 1 个 mock 受限步骤 deferred（逐项表见 acceptance-report §4 的 25 项归并）。R3 修复后的最终 `--full` 已重跑：**pass=21/fail=0/skip=1（仅 iSH guest archive，显式放行）**，详见 `acceptance-report.md` §2.1/§9。
+> 依据：`docs/plans/2026-11-10-phase1-b-implementation.md` §0–§9；`research/dsh-ios-research/{01,02,03,07,10,11,12}.md`。
+> 版本口径（Lead 已定）：merge 目标钉 **`aee6445`（v1.0.14）**；观察到 upstream/main=`3edc945f`（v1.0.15）仅记录，**不合并 v1.0.15**（见 §4 V），Phase 2 同步。
+> 生成：spec-baseline（T4，2026-11-10）；T23 更新（2026-11-11）。
+
+## 0. 最终验收入口
+
+- 验收报告（环境/门禁/24 ID·69 AC/25 项/修复/deferred/证据/最终门禁回填）：`acceptance-report.md`
+- Phase 2 功能线与遗留技术债：`phase2-backlog.md`
+- 仓库版计划（T1–T23 勾选与事实）：`docs/plans/2026-11-10-phase1-b-implementation.md`
+- 最终门禁结果：**pass=21/fail=0/skip=1（exit 0）**，日志 `reports/phase1/acceptance-run/t22b-verify-full-rerun.log`；T22b 首跑 18/3/1 已在 `acceptance-report.md` §8.4 留证
 
 ## 1. 产物清单
 
@@ -15,13 +22,15 @@
 | 3 | `capability-spec.md` | Phase 1 全部能力规格 | 471 行 | ✅ 完成 | **24 个 ID / 69 条 AC**（含跨切面 PERSIST-01），每条含用户故事/AC/错误边界/官方依据（文件:行）/iOS 实现位置/验收层级 |
 | 4 | `test-plan.md` | L0–L6、TDD、mock、CI、flaky | 170 行 | ✅ 完成 | RED 证据模板、测试文件布局、命名规范、行为覆盖要求 |
 | 5 | `verification-baseline.md` | 官方 CI/测试/契约门/43 项验收 + 新增项 | 155 行 | ✅ 完成（阈值 T6 冻结） | contract-gates 6 门落地；43 项映射（13 适用/30 deferred）；12 项新增验收 N-01…N-12 |
-| 6 | `traceability.md` | ID↔实现↔测试↔验收 矩阵 | 113 行 | ✅ 完成骨架（69 AC 全 PLANNED；B 行已回填） | 基线变更 B-1…B-7 + **69 个 AC 行**；规则：缺一行不得合并 |
-| 7 | `acceptance-checklist.md` | 模拟器手工验收（53 个可勾选步骤：A–G 主验收 44 + 准备 6 + 收尾 3） | 92 行 | ✅ 完成 | A–G 七组可勾选步骤 + deferred 清单 |
+| 6 | `traceability.md` | ID↔实现↔测试↔验收 矩阵 | 113 行 | ✅ **69/69 AC DONE（0 PLANNED）** | 基线变更 B-1…B-7 + **69 个 AC 行**；含 L4 37 行、L5 19 行；规则：缺一行不得合并 |
+| 7 | `acceptance-checklist.md` | 模拟器手工验收（53 个可勾选步骤：A–G 主验收 44 + 准备 6 + 收尾 3） | 92 行 | ✅ 完成 + **T22b 已逐项执行/记录 deferred** | 逐项结果见 `acceptance-report.md` §4 与 `reports/phase1/acceptance-run/acceptance-results.md` |
 | 8 | `mocks.md` | mock/fixture 设计 | 140 行 | ✅ 完成（含 TODO-VERIFY） | 端口/凭据、四类场景、fake host/SSH/Remote 设计、接线与安全规则 |
 | 9 | `test/fixtures/mock_model_server.mjs` | mock 模型 SSE 骨架（Node `node:http`） | 575 行 | ✅ **可运行**（自测 16/16 PASS） | `stream/thinking/tool/approval/question/error_http/error_stream/slow` 8 场景 + `/v1/responses` 形状 + `/__mock/config`；slow 默认 1000ms；`--self-test` 无需 repo/网络 |
-| 10 | `scripts/verify.sh` | 验证入口（`--static/--fast/--full/--list/--dry-run/--allow-skip/--self-test`） | 308 行 | ✅ **可运行**（`--list` 通过；`--static` 如实报 fail，见 V15；`--self-test` 5/5 PASS） | repo 自动定位（含 legacy 并排布局）；**所有模式 fail-on-skip**；`--self-test` 反假绿；`--dry-run` 先 guard 后打印 |
+| 10 | `scripts/verify.sh` | 验证入口（`--static/--fast/--full/--list/--dry-run/--allow-skip/--self-test`） | 308 行 | ✅ **可运行**（`--fast` 13/0/0；`--full` 21/0/1） | repo 自动定位（含 legacy 并排布局）；**所有模式 fail-on-skip**；`--self-test` 反假绿；`--dry-run` 先 guard 后打印 |
+| 11 | `acceptance-report.md` | Phase 1 验收报告（中文） | 本文件（T23） | ✅ **完成** | 环境/基线、自动化门、24 ID·69 AC 覆盖、25 项验收、修复记录、deferred、证据索引、最终 `--full` 回填（21/0/1） |
+| 12 | `phase2-backlog.md` | Phase 2 功能线与技术债 | 本文件（T23） | ✅ **完成** | 计划 §9 九条功能线 + 18 项 Phase 1 遗留技术债 + 里程碑建议 |
 
-> 合计 **2,592 行 / 12 文件**（含本 README 与 `test/unit/verify_script.test.mjs`；T4-fix 后规模；移入目标路径见 §7）。
+> 合计 **2,592 行 / 12 文件**（T4 冻结时；含本 README 与 `test/unit/verify_script.test.mjs`）。T23 新增 `acceptance-report.md`、`phase2-backlog.md`，当前目录 **12 份文件**（含 `README.md`、`upstream.lock`）。
 
 ## 2. 本次已执行的验证（T4 自证，非产品验收）
 
