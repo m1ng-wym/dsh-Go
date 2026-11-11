@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:dsh_client/dsh_client.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
@@ -81,7 +82,7 @@ class CustomProvider {
   final String baseUrl;
   final List<ProviderModelSpec> models;
 
-  /// Extra request headers; kept as they are, not edited here.
+  /// Extra request headers; edited in the form's advanced section.
   final Map<String, String> headers;
 
   /// Credential reference the key lives under; null for a keyless route.
@@ -205,6 +206,7 @@ class ProviderDraft {
     required this.baseUrl,
     this.apiKey = '',
     this.models = const [],
+    this.headers = const {},
   });
 
   /// Empty: the Base URL's host is used.
@@ -217,6 +219,10 @@ class ProviderDraft {
   /// Empty when editing: keep the stored key.
   final String apiKey;
   final List<ProviderModelSpec> models;
+
+  /// Extra request headers for a gateway that requires them (validated with
+  /// [headersError] by the form). Empty: send none.
+  final Map<String, String> headers;
 
   String get effectiveName {
     final trimmed = name.trim();
@@ -249,6 +255,39 @@ String? baseUrlError(String raw) {
     return appL10n.stateProviderUrlInvalid;
   }
   if (uri.hasQuery || uri.hasFragment) return appL10n.stateProviderUrlSuffix;
+  return null;
+}
+
+/// Most custom request headers one route may carry (a gateway needs one or
+/// two; the cap keeps a pasted block from turning the form into a wall).
+const int maxProviderHeaders = 20;
+
+/// RFC 7230 `tchar+`: what a header field-name may contain.
+final RegExp _headerNamePattern = RegExp(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$");
+
+/// CR, LF and every other C0 control / DEL; a header value may not carry one.
+final RegExp _headerValueControl = RegExp(r'[\x00-\x1F\x7F]');
+
+/// Field error for a header name, or null. Empty names are invalid, as are
+/// spaces, colons and anything else outside the token alphabet.
+String? headerNameError(String name) => _headerNamePattern.hasMatch(name) ? null : appL10n.providerHeaderInvalidName;
+
+/// Field error for a header value, or null. An empty value is allowed; CR, LF
+/// and control characters are not (they could split or truncate the request).
+String? headerValueError(String value) =>
+    _headerValueControl.hasMatch(value) ? appL10n.providerHeaderInvalidValue : null;
+
+/// Error for a whole header map, or null: at most [maxProviderHeaders] rows,
+/// every name a token, every value free of CR/LF/control characters, and no
+/// two names equal ignoring case.
+String? headersError(Map<String, String> headers) {
+  if (headers.length > maxProviderHeaders) return appL10n.providerHeaderLimit;
+  final seen = <String>{};
+  for (final MapEntry(:key, :value) in headers.entries) {
+    if (!seen.add(key.toLowerCase())) return appL10n.providerHeaderDuplicate;
+    final error = headerNameError(key) ?? headerValueError(value);
+    if (error != null) return error;
+  }
   return null;
 }
 
@@ -542,6 +581,10 @@ class ProviderActions {
   /// official page does; if only the key fails, the [ProviderFailure] carries
   /// the new id.
   Future<String> save(ProviderDraft draft, {CustomProvider? existing}) async {
+    // The form checks every row; a caller that builds a draft itself (a test,
+    // an import) still must not write a header map the adapter will reject.
+    final headerError = headersError(draft.headers);
+    if (headerError != null) throw ProviderFailure(headerError);
     final backend = _backend;
     final before = _snapshot;
     _ref.read(readListCredentialEpochProvider.notifier).advance();
@@ -565,11 +608,15 @@ class ProviderActions {
           baseUrl: draft.baseUrl,
           apiKeyEnv: draft.apiKey.isEmpty ? null : keyRef,
           models: draft.models,
+          headers: draft.headers,
         ),
       );
     } else {
       id = existing.id;
       keyRef = existing.keyRef;
+      // Rewriting the map is only needed when it changed; an untouched form
+      // leaves whatever the engine (or the web page) stored alone.
+      final headersChanged = !mapEquals(draft.headers, existing.headers);
       await backend.update(
         id,
         displayName: name,
@@ -578,6 +625,7 @@ class ProviderActions {
         // A keyless route gets its reference once a key is typed.
         apiKeyEnv: existing.apiKeyEnv == null && draft.apiKey.isNotEmpty ? keyRef : null,
         models: draft.models,
+        headers: headersChanged ? {...draft.headers} : null,
         expectedRevision: before?.revision,
       );
     }

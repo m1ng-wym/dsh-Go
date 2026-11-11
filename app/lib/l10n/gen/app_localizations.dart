@@ -11714,6 +11714,72 @@ abstract class L10n {
   /// **'已添加'**
   String get engineProviderAlreadyAdded;
 
+  /// No description provided for @providerHeadersAdvanced.
+  ///
+  /// In zh, this message translates to:
+  /// **'高级'**
+  String get providerHeadersAdvanced;
+
+  /// No description provided for @providerHeadersTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求头'**
+  String get providerHeadersTitle;
+
+  /// No description provided for @providerHeadersHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'网关要求的额外请求头，比如 x-opencode-session'**
+  String get providerHeadersHint;
+
+  /// No description provided for @providerHeaderName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get providerHeaderName;
+
+  /// No description provided for @providerHeaderValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'值'**
+  String get providerHeaderValue;
+
+  /// No description provided for @providerHeaderAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加请求头'**
+  String get providerHeaderAdd;
+
+  /// No description provided for @providerHeaderRemove.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除请求头'**
+  String get providerHeaderRemove;
+
+  /// No description provided for @providerHeaderInvalidName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称只能是 HTTP token（不能有空格、冒号或控制字符）'**
+  String get providerHeaderInvalidName;
+
+  /// No description provided for @providerHeaderInvalidValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'值不能包含换行或控制字符'**
+  String get providerHeaderInvalidValue;
+
+  /// No description provided for @providerHeaderDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求头名称重复（不区分大小写）'**
+  String get providerHeaderDuplicate;
+
+  /// No description provided for @providerHeaderLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'最多 20 个请求头'**
+  String get providerHeaderLimit;
+
   /// No description provided for @engineProviderReady.
   ///
   /// In zh, this message translates to:

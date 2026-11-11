@@ -45,6 +45,26 @@ class ProviderFormPage extends ConsumerStatefulWidget {
 /// The fields that can carry an error, in page order.
 enum _F { baseUrl, key, models }
 
+/// One advanced-row request header while it is being edited: both fields stay
+/// as typed so a blank row can be added and filled without losing focus.
+class _HeaderRow {
+  _HeaderRow(String name, String value)
+    : name = TextEditingController(text: name),
+      value = TextEditingController(text: value);
+
+  final TextEditingController name;
+  final TextEditingController value;
+
+  void dispose() {
+    name.dispose();
+    value.dispose();
+  }
+}
+
+/// The advanced section as the current rows read: per-row messages, the first
+/// message (what keeps 「保存」 disabled), and the map a save would write.
+typedef _HeaderDraft = ({List<String?> errors, String? error, Map<String, String> headers});
+
 class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
   late final _name = TextEditingController(text: widget.existing?.displayName ?? '');
   late final _baseUrl = TextEditingController(text: widget.existing?.baseUrl ?? '');
@@ -75,7 +95,11 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
 
   bool get _isEdit => _editing != null;
 
-  late final Listenable _edits = Listenable.merge([_name, _baseUrl, _key]);
+  /// Extra request headers of the route being edited, in stored order. Open
+  /// from the start when the route already has some, so an edit shows them.
+  late final List<_HeaderRow> _headerRows;
+  late bool _headersOpen;
+  late Listenable _edits;
   late String _clean;
 
   String _signature() => jsonEncode([
@@ -84,20 +108,91 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
     _key.text,
     _api.name,
     [for (final model in _models) model.toJson()],
+    [
+      for (final row in _headerRows) [row.name.text, row.value.text],
+    ],
   ]);
 
   @override
   void initState() {
     super.initState();
+    final headers = widget.existing?.headers ?? const <String, String>{};
+    _headerRows = [for (final entry in headers.entries) _HeaderRow(entry.key, entry.value)];
+    _headersOpen = headers.isNotEmpty;
+    _edits = _makeEdits();
     _clean = _signature();
   }
+
+  Listenable _makeEdits() => Listenable.merge([
+    _name,
+    _baseUrl,
+    _key,
+    for (final row in _headerRows) ...[row.name, row.value],
+  ]);
 
   @override
   void dispose() {
     _name.dispose();
     _baseUrl.dispose();
     _key.dispose();
+    for (final row in _headerRows) {
+      row.dispose();
+    }
     super.dispose();
+  }
+
+  /// The rows as they would be saved: blank rows are ignored, and the exact
+  /// row an error belongs to carries its message.
+  _HeaderDraft _headerDraft() {
+    final errors = <String?>[];
+    final headers = <String, String>{};
+    final seen = <String>{};
+    String? first;
+    var rows = 0;
+    for (final row in _headerRows) {
+      final name = row.name.text.trim();
+      final value = row.value.text;
+      if (name.isEmpty && value.isEmpty) {
+        errors.add(null);
+        continue;
+      }
+      rows++;
+      final key = name.toLowerCase();
+      final duplicate = name.isNotEmpty && seen.contains(key) ? context.l10n.providerHeaderDuplicate : null;
+      if (name.isNotEmpty) seen.add(key);
+      final error = headerNameError(name) ?? headerValueError(value) ?? duplicate;
+      errors.add(error);
+      first ??= error;
+      // A valid row above the limit still writes below it; the write is
+      // refused while [first] is set, so the map only matters when it is null.
+      if (error == null) headers[name] = value;
+    }
+    if (rows > maxProviderHeaders) first ??= context.l10n.providerHeaderLimit;
+    return (errors: errors, error: first, headers: headers);
+  }
+
+  void _addHeaderRow() {
+    setState(() {
+      _headerRows.add(_HeaderRow('', ''));
+      _edits = _makeEdits();
+    });
+  }
+
+  void _removeHeaderRow(int index) {
+    setState(() {
+      _headerRows.removeAt(index).dispose();
+      _edits = _makeEdits();
+    });
+  }
+
+  /// Rows are validated as they are typed (the pinned 「保存」 follows), so a
+  /// header edit only has to clear a stale form error and rebuild the page.
+  void _headerEdited() {
+    if (_formError != null) {
+      setState(() => _formError = null);
+    } else {
+      setState(() {});
+    }
   }
 
   void _edited(_F field) {
@@ -238,12 +333,21 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
     setState(() => _formError = null);
     _showErrors(errors);
     if (errors.isNotEmpty) return;
+    final headers = _headerDraft();
+    if (headers.error != null) {
+      setState(() {
+        _headersOpen = true;
+        _formError = headers.error;
+      });
+      return;
+    }
     final draft = ProviderDraft(
       name: _name.text,
       api: _api,
       baseUrl: normalizeBaseUrl(_baseUrl.text, _api),
       apiKey: key,
       models: _models,
+      headers: headers.headers,
     );
     setState(() => _saving = true);
     try {
@@ -260,6 +364,7 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
             api: draft.api,
             baseUrl: draft.baseUrl,
             models: draft.models,
+            headers: draft.headers,
             apiKeyEnv: deriveProviderKeyRef(id),
           );
         }
@@ -287,6 +392,7 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
     final anthropic = _api == ProviderApi.anthropicMessages;
     final busy = _saving || _discovering;
     final modelsMessage = _errors[_F.models] ?? _modelsError;
+    final headerDraft = _headerDraft();
 
     final page = AppPage.list(
       title: _isEdit ? l10n.engineProviderEdit : l10n.engineProviderAdd,
@@ -393,6 +499,61 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
                 message: modelsMessage,
               ),
             ),
+            SettingsSection(
+              title: l10n.providerHeadersAdvanced,
+              // A collapsed section still says why 「保存」 is disabled.
+              footer: !_headersOpen && headerDraft.error != null
+                  ? Text(headerDraft.error!, style: TextStyle(color: colors.danger))
+                  : null,
+              children: [
+                SettingsTile(
+                  icon: AppIcons.configure,
+                  tinted: false,
+                  title: l10n.providerHeadersTitle,
+                  subtitle: l10n.providerHeadersHint,
+                  chevron: false,
+                  trailing: Icon(
+                    _headersOpen ? AppIcons.collapse : AppIcons.expand,
+                    size: 18,
+                    color: colors.textTertiary,
+                  ),
+                  onTap: busy ? null : () => setState(() => _headersOpen = !_headersOpen),
+                ),
+                if (_headersOpen)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(SettingsMetrics.inset, 4, SettingsMetrics.inset, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < _headerRows.length; i++)
+                          _HeaderRowField(
+                            index: i,
+                            row: _headerRows[i],
+                            error: headerDraft.errors.length > i ? headerDraft.errors[i] : null,
+                            enabled: !busy,
+                            onChanged: _headerEdited,
+                            onRemove: () => _removeHeaderRow(i),
+                          ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FormSmallButton(
+                            label: l10n.providerHeaderAdd,
+                            onPressed: busy || _headerRows.length >= maxProviderHeaders ? null : _addHeaderRow,
+                          ),
+                        ),
+                        if (_headerRows.length >= maxProviderHeaders)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+                            child: Text(
+                              l10n.providerHeaderLimit,
+                              style: theme.textTheme.bodySmall?.copyWith(color: colors.textTertiary),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
             SmoothSize(
               duration: AppMotion.of(context, AppMotion.standard),
               curve: AppMotion.std,
@@ -422,7 +583,7 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
             bottom: MediaQuery.viewInsetsOf(context).bottom,
             child: FormBottomBar(
               child: FilledButton(
-                onPressed: backend == null || busy ? null : _save,
+                onPressed: backend == null || busy || headerDraft.error != null ? null : _save,
                 child: _saving
                     ? Row(
                         mainAxisSize: MainAxisSize.min,
@@ -439,6 +600,77 @@ class _ProviderFormPageState extends ConsumerState<ProviderFormPage> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One advanced-row request header: name, value, remove, and the row's own
+/// error underneath. Values are shown while editing but never logged.
+class _HeaderRowField extends StatelessWidget {
+  const _HeaderRowField({
+    required this.index,
+    required this.row,
+    required this.error,
+    required this.enabled,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final int index;
+  final _HeaderRow row;
+  final String? error;
+  final bool enabled;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = DshColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FormFieldLabel(
+            l10n.providerHeaderName,
+            trailing: IconButton(
+              key: ValueKey('provider-header-remove-$index'),
+              tooltip: l10n.providerHeaderRemove,
+              visualDensity: VisualDensity.compact,
+              color: colors.textTertiary,
+              icon: const Icon(AppIcons.close, size: 20),
+              onPressed: enabled ? onRemove : null,
+            ),
+          ),
+          TextField(
+            key: ValueKey('provider-header-name-$index'),
+            controller: row.name,
+            autocorrect: false,
+            enableSuggestions: false,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => onChanged(),
+            decoration: InputDecoration(hintText: l10n.providerHeaderName),
+          ),
+          const SizedBox(height: 8),
+          FormFieldLabel(l10n.providerHeaderValue),
+          TextField(
+            key: ValueKey('provider-header-value-$index'),
+            controller: row.value,
+            autocorrect: false,
+            enableSuggestions: false,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => onChanged(),
+            decoration: InputDecoration(hintText: l10n.providerHeaderValue),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+              child: Text(error!, style: theme.textTheme.bodySmall?.copyWith(color: colors.danger)),
+            ),
         ],
       ),
     );

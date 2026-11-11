@@ -515,8 +515,10 @@ extension ProvidersApi on DshClient {
   }
 
   /// Sets only the given fields of an existing profile, in one atomic write,
-  /// so fields this client does not model (`compat`, `headers`, retry policy)
-  /// stay as they are. [models] replaces the whole list.
+  /// so fields this client does not model (`compat`, retry policy) stay as
+  /// they are. [models] replaces the whole list; [headers] replaces the whole
+  /// `headers` map, so an empty map removes every custom request header.
+  /// Passing null for a field leaves it untouched.
   Future<ProviderSettings> updateProvider(
     String route, {
     String? displayName,
@@ -524,6 +526,7 @@ extension ProvidersApi on DshClient {
     String? baseUrl,
     String? apiKeyEnv,
     List<ProviderModelSpec>? models,
+    Map<String, String>? headers,
     int? expectedRevision,
   }) async {
     _checkRoute(route);
@@ -534,6 +537,7 @@ extension ProvidersApi on DshClient {
       if (baseUrl != null) SettingsOp.set(at('baseURL'), baseUrl),
       if (apiKeyEnv != null) SettingsOp.set(at('apiKeyEnv'), apiKeyEnv),
       if (models != null) SettingsOp.set(at('models'), [for (final m in models) m.toJson()]),
+      if (headers != null) SettingsOp.set(at('headers'), headers),
     ];
     if (ops.isEmpty) throw ArgumentError('nothing to update');
     final section = await mutateSettings(piAiSettingsNs, ops, expectedRevision: expectedRevision);
