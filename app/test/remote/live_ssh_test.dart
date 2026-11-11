@@ -7,6 +7,11 @@
 //   DSH_APP_LIVE_SSH_HOST_PUB=/path/to/host_ed25519.pub \
 //   flutter test test/remote/live_ssh_test.dart
 //
+// DSH_APP_LIVE_SSH_PATH sets the PATH exported into the remote shell; without
+// it the default below is used. A non-interactive SSH command often has no
+// PATH, so the remote `dsh` lookup needs this (the bootstrap itself fails with
+// `dshNotFound` rather than silently using a different binary).
+//
 // Any sshd works. Without a system one, an unprivileged sshd on loopback is
 // enough: host key + authorized_keys in a temp dir, `UsePAM no`,
 // `StrictModes no`, `ListenAddress 127.0.0.1`, `Port 22422`, run with
@@ -24,6 +29,8 @@ import 'package:dsh_app/remote/ssh/remote_bootstrap.dart';
 import 'package:dsh_app/remote/ssh/remote_shell.dart';
 import 'package:dsh_app/remote/ssh/ssh_link.dart';
 import 'package:dsh_app/remote/ssh/ssh_transport.dart';
+import 'package:dsh_app/runtime/runtime_bridge.dart';
+import 'package:dsh_app/runtime/runtime_state.dart';
 import 'package:dsh_app/state/connection_state.dart';
 import 'package:dsh_app/state/hosts_state.dart';
 import 'package:dsh_app/state/sessions_state.dart';
@@ -45,7 +52,14 @@ void main() {
   setUpAll(() {
     if (!enabled) return;
     home = Directory.systemTemp.createTempSync('dsh-app-live-home-');
-    remoteEnv = {'HOME': home.path, 'DSH_HOME': '${home.path}/.dsh'};
+    // Non-interactive SSH commands frequently get no PATH at all; without one
+    // the remote `dsh` lookup fails. Keep Homebrew/local bins visible.
+    final defaultPath = '/usr/local/bin:/opt/homebrew/bin:${env['HOME']}/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
+    remoteEnv = {
+      'HOME': home.path,
+      'DSH_HOME': '${home.path}/.dsh',
+      'PATH': env['DSH_APP_LIVE_SSH_PATH'] ?? defaultPath,
+    };
     config = SshHostConfig(
       id: 'ssh-live',
       name: '本机 SSH',
@@ -173,6 +187,9 @@ void main() {
         overrides: [
           secretStoreProvider.overrideWithValue(secrets),
           networkKicksProvider.overrideWithValue(const Stream.empty()),
+          // This test has no Flutter binding (real HTTP must stay real); keep
+          // the local-runtime event channel out of the provider graph.
+          runtimeBridgeProvider.overrideWithValue(_NoEventsRuntimeBridge()),
           sshLinkFactoryProvider.overrideWithValue(
             (ref, cfg) => SshHostLink(
               config: cfg,
@@ -227,4 +244,13 @@ void main() {
       throwsA(isA<HostLinkError>().having((e) => e.kind, 'kind', HostLinkErrorKind.authFailed)),
     );
   }, skip: skip);
+}
+
+/// The app-state test creates providers that touch the local-runtime bridge.
+/// Without a Flutter binding the EventChannel can't be listened to, and the
+/// test binding would mock HttpClient (breaking the real SSH path), so give
+/// the graph an empty event stream instead.
+class _NoEventsRuntimeBridge extends RuntimeBridge {
+  @override
+  Stream<RuntimeEvent> get events => const Stream<RuntimeEvent>.empty();
 }
