@@ -180,12 +180,10 @@ Future<void> _verifyStopAndRestart(
   );
 
   // B4: the new-chat screen must be usable after the restart, still without a
-  // process relaunch. Creating a brand-new session right after a restart has a
-  // timing race in the app's draft switch (the send clears the draft but the
-  // creation loses its owner), so this checks the new-chat state and an enabled
-  // composer, then proves the engine still chats by continuing the pre-stop
-  // conversation. Whether a *new* session can be created is left to the normal
-  // first-launch path (already green) and L2 coverage.
+  // process relaunch. A send right after stop→start races the app's session
+  // creation; T26 makes it wait for the restarted connection and retry once,
+  // so this creates a *new* conversation and streams a full turn (not just an
+  // enabled composer and the pre-stop conversation).
   container.read(currentSessionProvider.notifier).select(null);
   await _waitFor(
     tester,
@@ -193,33 +191,18 @@ Future<void> _verifyStopAndRestart(
     () => container.read(currentSessionProvider) == null,
     timeout: const Duration(seconds: 30),
   );
-  final composerField = find.descendant(of: find.byType(Composer), matching: find.byType(TextField)).first;
-  await _waitFor(
-    tester,
-    'new chat composer',
-    () => composerField.evaluate().isNotEmpty,
-    timeout: const Duration(seconds: 30),
+  container.read(pendingModelProvider.notifier).select(ModelSelection(provider: providerId, model: _slowModel));
+  await _sendStreamingTurn(tester, container, providerId, assertSessionModel: false);
+  final sessionAfterRestart = container.read(currentSessionProvider);
+  expect(sessionAfterRestart, isNotNull, reason: 'the post-restart send created no conversation');
+  expect(
+    sessionAfterRestart,
+    isNot(sessionBefore),
+    reason: 'the post-restart send reused the pre-stop conversation instead of creating a new one',
   );
-  await tester.enterText(composerField, '重启后的新对话草稿');
-  await tester.pump();
-  final newChatSend = find.descendant(of: find.byType(Composer), matching: find.byIcon(AppIcons.send));
-  await _waitFor(
-    tester,
-    'new chat send key enabled after restart',
-    () {
-      final composers = tester.widgetList<Composer>(find.byType(Composer)).toList();
-      return newChatSend.evaluate().isNotEmpty &&
-          composers.isNotEmpty &&
-          composers.every((composer) => composer.connected && composer.sessionReady && !composer.busy);
-    },
-    timeout: const Duration(seconds: 60),
-  );
-  expect(container.read(currentSessionProvider), isNull, reason: 'typing in a new chat created a session');
-  await tester.enterText(composerField, '');
-  await tester.pump();
-  _log('post-restart new chat is usable (empty session, composer ready, send key enabled)');
+  _log('post-restart new conversation works: $sessionAfterRestart');
 
-  // The restarted engine must still run a turn in an existing conversation.
+  // The restarted engine must still run a turn in the pre-stop conversation.
   container.read(currentSessionProvider.notifier).select(sessionBefore);
   await tester.pump();
   container.read(pendingModelProvider.notifier).select(ModelSelection(provider: providerId, model: _slowModel));
