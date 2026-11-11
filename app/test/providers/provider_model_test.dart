@@ -555,6 +555,7 @@ class _RefusingBackend extends FakeProviderBackend {
     ProviderApi? api,
     String? baseUrl,
     String? apiKeyEnv,
+    bool clearApiKeyEnv = false,
     List<ProviderModelSpec>? models,
     Map<String, String>? headers,
     int? expectedRevision,
