@@ -1,6 +1,6 @@
 # Phase 2 Backlog（phase2-backlog.md）
 
-- 版本：v1.0（2026-11-11，T23）
+- 版本：v1.1（2026-11-12，Phase 1 收口；已闭合项将移出）
 - 来源：计划 §9（Phase 2 边界）+ T22/T22b 验收记录 + 各任务报告 follow-up
 - 规则：Phase 1 **不做**下列功能；优先级只是建议，进入 Phase 2 前由 Lead 重新排序并补 spec/AC
 - 状态标记：`PLAN` = 尚未开工；`DEBT` = Phase 1 遗留技术债；`DONE` = Phase 1 已顺手修复，仅留档
@@ -29,7 +29,7 @@
 
 | # | 债项 | 现状 | 建议动作 | 优先级 |
 |---|---|---|---|---|
-| D-1 | **C7/C8 审批 L4 不可达** | 本机引擎 profile 默认 `danger-full-access`，写工具自动执行；`phase1_acceptance_test` 120s 超时，记 DEFERRED-L5 | 增加可切换的 `approval: ask` 测试 profile；补 L4 允许/拒绝各一次 + 文件系统无副作用断言；或明确以 L2 组件测试为最终证据 | 高 |
+| D-1 | **C7/C8 审批 L4** | 本轮 T27 关闭（真实模型 + 干净默认 `workspace-write+ask`；allow/deny 文件系统断言） | 已排期，不再 deferred | 高 |
 | D-2 | **D1-09-AC1 会话列表 L4** | L2 只断言“当前会话清空+主机切换+prefs”；列表行内容需 fake DSH host | 在 fake host 注入 `session/list`，断言切换后只显示该主机会话、切回数据仍在 | 中 |
 | D-3 | **D2-03 profile-first 边缘** | 保存渠道时先写 profile 再写 key，极端失败可能留半成品 | 事务化/补偿删除；补故障注入测试（参考 T10-T11 报告 §7.4） | 中 |
 | D-4 | **D2-04 发送时渠道被删回退** | 只覆盖“切换时引擎拒绝→回退上一模型”；切换成功后、发送前渠道被删无自动回退 | 服务端错误码/目录重读策略 + 失败回退到上一可用模型 | 中 |

@@ -1,7 +1,7 @@
 # Phase 1 测试计划（test-plan.md）
 
-> 状态：T4-draft（staging，待 freeze `spec-phase1-v1`）
-> 依据：计划 §4.2（测试层级与"可失败"要求）、§7.1（自动化门）；`capability-spec.md`（69 个 AC）；`verification-baseline.md`（验收门）；`mocks.md`（mock 设计）。
+> 状态：**v1.1**（2026-11-12，Phase 1 收口）。v1 冻结 69 AC；v1.1 新增 D2-03-AC4 与 L4-Real/冷启动/UI 进程级三层证据要求。
+> 依据：计划 §4.2（测试层级与"可失败"要求）、§7.1（自动化门）；`capability-spec.md`（**70** 个 AC）；`verification-baseline.md`（验收门）；`mocks.md`（mock 设计）；`docs/plans/2026-11-12-phase1-completion.md`（收口计划）。
 > 原则：**行为覆盖优先于行覆盖率**；每个 AC 至少一个自动化测试或被明确标 `manual`/`deferred`；禁止"只断言 mock 调用"的测试。
 
 ## 1. 测试层级（L0–L6）
@@ -12,11 +12,22 @@
 | **L1 单元** | Dart 纯逻辑（状态机/解析/脱敏/队列）、Node 运行时/桥接、Swift 纯函数 | 本机/CI | `flutter test test/unit`；`dart test`（packages）；`node --test test/unit/**/*.test.mjs`；Swift 纯逻辑在 RunnerTests | 所有逻辑改动 |
 | **L2 Widget** | Flutter 页面/状态/通道 fake（approval card、queue、drawer、search、files、model sheet…） | 本机/CI ubuntu（flutter test 无需模拟器） | `flutter test test/widget` | 所有 UI AC |
 | **L3 契约** | Swift 通道协议/JSON/错误码（RunnerTests）；Dart↔bridge 契约；审批/问题事件形状 | macOS 模拟器 | `xcodebuild test -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`（只跑 Phase 1 相关 suite） | 通道/协议改动 |
-| **L4 集成（模拟器）** | **真 Node 引擎 + mock 模型 + fake host/transport**；install/start/chat/approval/file/persist/remote | macOS 模拟器 | `flutter test integration_test/phase1_test.dart -d <sim>`；辅助 `tooling/ios/engine-smoke/*`（官方资产） | 每个 Wave 结束 + T22 |
-| **L5 手工** | 冷启动/引导/权限弹窗/系统选择器/真实 sshd/真实模型 | 模拟器 | `acceptance-checklist.md` 44 项主验收（A–G；另有准备 6、收尾 3，共 53 个可勾选步骤） | T22 |
+| **L4 集成（模拟器）** | **真 Node 引擎 + 确定性 mock 模型**；只用于 L1/L2 边界与确定性时序（流中断、超时、错误态） | macOS 模拟器 | `flutter test integration_test/phase1_test.dart -d <sim>`；辅助 `tooling/ios/engine-smoke/*`（官方资产） | 每个 Wave 结束 |
+| **L4-Real（模拟器，DoD 3 法定层）** | **真 App + 真引擎 + 真实 opencode-go 模型**；工具调用/审批/工作区/持久化；真实 SSH；真实自托管 DSH Remote | macOS 模拟器 | `scripts/verify.sh --real`；`scripts/verify.sh --remote`；`app/integration_test/phase1_real_*` | Phase 1 v1.1 验收 |
+| **L4-Process（模拟器，进程级）** | `simctl terminate`/XCUITest `terminate()+launch()`；冷启动、安装续装、自动启动、失败诊断、杀进程持久化、系统选择器 | macOS 模拟器 | `Phase1UITests` + 宿主脚本 | Phase 1 v1.1 验收 |
+| **L5 手工** | 仅系统不可自动化项（权限弹窗等）；**不再接受**“真实模型/真实 sshd/真实 Remote 属 L5”的口径 | 模拟器 | `acceptance-checklist.md` 44 项逐项证据（PASS/Phase 1 外） | Phase 1 v1.1 |
 | **L6 Device-deferred** | 相机/APNs/后台/性能/触控/真机签名/CoreDevice/DDI | 真机 | 记录，不进 Phase 1 门 | T23 交付报告 |
 
 **层级选择规则**：AC 已标注层级（`capability-spec.md` 每条）；实现测试不得低于该层级。纯 UI 行为默认 L2；涉及引擎/持久化/远程必须有 L4；安全相关负例（拒绝、不重复执行、脱敏）必须有独立断言。
+
+### 1.1 真实层与进程层的硬规则（v1.1 收口）
+
+1. **真实模型**：L4-Real 使用 opencode-go `deepseek-v4.1-flash`（`baseURL=https://opencode.ai/inference/go/v1`，需 `x-opencode-session` 头），凭据只从运行时 credential broker 取，不落仓、不进日志、不进截图；缺 key / 网络不可达一律 FAIL，不 skip。
+2. **真实 SSH**：使用临时非特权 sshd（`127.0.0.1:22422`，临时 host/client key、独立 `AuthorizedKeysFile`），不改 `~/.ssh`；远端 `dsh web` 使用临时 `DSH_HOME`。fake SSH 只保留给 L2 负例。
+3. **真实 DSH Remote**：自托管上游 `apps/server` + `ds-harness-remote` Host 插件（隔离 `DSH_HOME`，loopback）；fake relay 只保留给 L2 负例。
+4. **进程级**：凡“杀 App 重开/安装续装/冷启动自动启动/失败诊断”必须有 `simctl terminate` 或 XCUITest `terminate()+launch()` 的证据；进程内 `runApp` 重建不算。
+5. **禁止假绿**：默认 `--full` 的 skip 必须为 0；`--real`/`--remote` 缺前置条件即 FAIL；任何 `skip:`/`-skip-testing`/文件排除必须写入 `reports/phase1-completion/skip-audit.md` 并由 verifier 复核。
+6. **预算**：真实模型调用串行、总预算约 100 次；网络失败最多重试 2 次，重试不得放宽容差或改写断言。
 
 ## 2. TDD 硬规则与 RED 证据
 
@@ -78,7 +89,9 @@ repo/
     d9_01_privacy_test.dart
     persist_01_recovery_test.dart
     support/                            # 测试夹具：FakeDshClient、FakeHost、SseServer harness
-  app/integration_test/phase1_test.dart  # L4：真引擎 + mock 模型 + fake host（新增）
+  app/integration_test/phase1_test.dart  # L4：真引擎 + mock 模型（确定性边界）
+  app/integration_test/phase1_real_*.dart # L4-Real：真引擎 + 真实 opencode-go / 真实 SSH / DSH Remote
+  app/ios/PhoneRunner/Phase1UITests.swift # L4-Process：冷启动/续装/系统选择器（独立 UI test bundle）
   app/ios/RunnerTests/Phase1*Tests.swift # L3：仅新增 Swift 契约测试（新增文件，不改官方文件）
   test/fixtures/                        # 仓库根（新增，跨语言 fixture）
     mock_model_server.mjs               # Node SSE mock（本次交付骨架）

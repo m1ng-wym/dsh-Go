@@ -1,10 +1,11 @@
 # Phase 1 能力规格（capability-spec.md）
 
-> 状态：T4-draft（staging，待 freeze `spec-phase1-v1`）
+> 状态：**v1.1**（2026-11-12，Phase 1 收口；新增 D2-03-AC4，其余 AC 不变）。历史冻结：`spec-phase1-v1`（T4，69 AC）；本轮 `spec-phase1-v1.1`（70 AC）。
 > 范围：Phase 1 全部能力 ID（计划 §2.1）—— D1-01/02/04、D2-01/03/04、D3-01..08、D3-19、D4-01/03/05/07、D9-01、D1-09/10/11，另加跨切面 **PERSIST-01**（会话持久化/引擎重启/崩溃恢复，计划 §2.1 末条）。
+> v1.1 说明：Phase 1 收口发现真实网关（opencode-go 等）要求自定义请求头才能推理；这是 B 范围内“自定义渠道”能力的边界缺口，故新增 **D2-03-AC4**。其余缺口（真实模型、审批可达、进程级杀 App、真实 SSH/Remote、L4 重放等）是**既有 AC 的证据补齐**，不新增/不降低标准。
 > 规范：每条 ≥2 条 Given/When/Then 验收标准，编号 `<ID>-AC<n>`；每条 AC 必须可自动化（L0–L4）或明确 `manual`/`deferred`（L5/L6）。
 > 证据：`官方依据` 只引用**已核验的文件:行**（main `aee6445` 快照 + `git show` 抽查；行号以本次核对为准）。iOS 实现位置来自分支 `418868c3` 的真实目录结构。
-> 关联：`upstream.lock`（版本）、`test-plan.md`（层级/命名）、`traceability.md`（逐行状态，共 69 个 AC 行）、`verification-baseline.md`（验收门）。
+> 关联：`upstream.lock`（版本）、`test-plan.md`（层级/命名）、`traceability.md`（逐行状态，共 **70** 个 AC 行）、`verification-baseline.md`（验收门）。
 
 ## 0. 汇总
 
@@ -17,9 +18,9 @@
 | D9 安全 | D9-01 | 1 | 1 | L2 + L5 |
 | D1 远程 | D1-09, D1-10, D1-11 | 3 | 3 | L1/L2 + L4（fake transport）+ L5（真实 host） |
 | 跨切面 | PERSIST-01 | 1 | 1 | L4 + L5 |
-| **合计** | | **24** | **24** | AC 合计 **69** 条（与 traceability 行数一致） |
+| **合计** | | **24** | **24** | AC 合计 **70** 条（69 + v1.1 的 D2-03-AC4；与 traceability 行数一致） |
 
-**验收层级定义**（见 `test-plan.md` §1）：L0 静态 / L1 单元 / L2 Widget / L3 契约 / L4 集成（模拟器，真引擎+mock 模型）/ L5 模拟器手工 / L6 真机 deferred。
+**验收层级定义**（见 `test-plan.md` §1）：L0 静态 / L1 单元 / L2 Widget / L3 契约 / L4 集成（模拟器，真引擎 + **真实或确定性模型**）/ L5 模拟器手工 / L6 真机 deferred。收口轮新增 L4-Real（真实模型/真实 SSH/真实 DSH Remote）作为 L4 的子层；DoD 3 的证据必须来自 L4-Real，mock 只能用于 L1/L2 边界。
 
 **测试命名规范**：`<ID>_<snake_case_behavior>`，例：`D3-06_deny_approval_blocks_tool`；同 ID 多测试加后缀 `_2` 或语义后缀（`_timeout`）。测试文件位置见 `test-plan.md` §3。
 
@@ -111,13 +112,14 @@
   - **D2-03-AC1** — Given 设置 › 模型 › 添加渠道，When 选择兼容协议、填 Base URL 与 API Key、获取/手动添加模型并保存，Then 保存成功、新模型出现在「选择模型」，且 Key 只写入 Keychain（不出现在日志/诊断/UI 明文之外）。`自动化 L2 + L4（mock 模型）`
   - **D2-03-AC2** — Given Base URL 非法 / Key 错误 / 获取模型失败，When 保存或测试，Then 显示可读错误且不崩溃、不保存半成品配置。`自动化 L2`
   - **D2-03-AC3** — Given 修改已有渠道的 Base URL/Key，When 保存，Then 只有该渠道变化，其他渠道与模型选择不受影响。`自动化 L2`
-- **错误/边界**：Key 为空/格式错误的提示；跨站点复用 Key 需确认（官方行为，Phase 1 可只做提示不强制）；订阅渠道只读（Phase 1 不做订阅登录）。
+  - **D2-03-AC4** — Given 某兼容网关要求额外的请求头才能推理（如 opencode-go 的 `x-opencode-session`），When 在添加/编辑渠道的高级区增删请求头并保存，Then 头名必须为合法 HTTP token、值不得含 CR/LF，重复名（大小写不敏感）被拒绝；保存后 headers 进入该渠道 profile 并随推理请求发送，编辑时回显且不清空未知字段；header 值不进入日志/诊断/错误详情。`自动化 L2 + L4（真实网关）`
+- **错误/边界**：Key 为空/格式错误的提示；跨站点复用 Key 需确认（官方行为，Phase 1 可只做提示不强制）；订阅渠道只读（Phase 1 不做订阅登录）；请求头只能放在高级区，不能被普通“获取模型”流程静默丢弃；删除全部请求头等价于不发送自定义头。
 - **官方依据**：
   - `docs/guide/zh/02-models.md:29-48` —「## 渠道页」「官方/订阅/自定义」三组、「## 添加自定义渠道」步骤（兼容协议 OpenAI/Anthropic/Responses、Base URL、API Key、获取模型、手动添加、保存）。
   - `docs/official-parity.md:77` —「模型服务商与密钥 … 自定义渠道；订阅建的渠道只读」。
 - **iOS 实现位置（预期）**：`app/lib/ui/providers/provider_form_page.dart`、`app/lib/ui/engine_settings/`；`app/lib/secrets/secure_storage.dart`（Keychain：`IOSOptions(accessibility: unlocked_this_device)`）；引擎设置 API：`packages/dsh_client/lib/src/engine_settings_api.dart`（分支路径）。
-- **测试名示例**：`D2-03_add_custom_provider_saves_key_to_keychain`、`D2-03_invalid_base_url_shows_error`。
-- **验收层级**：L2 + L4。
+- **测试名示例**：`D2-03_add_custom_provider_saves_key_to_keychain`、`D2-03_invalid_base_url_shows_error`、`D2-03_provider_headers_roundtrip_and_validate`。
+- **验收层级**：L2 + L4；AC4 为 L2 + L4-Real（opencode-go `deepseek-v4.1-flash` 直连）。
 
 ### D2-04 · 模型切换与思考深度（P0）
 

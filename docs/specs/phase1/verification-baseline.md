@@ -1,6 +1,6 @@
 # Phase 1 验证与验收基线（verification-baseline.md）
 
-> 状态：T4-draft（staging）。阈值在 **T6 基线测量后冻结**（本文件先给占位与测量方法）。
+> 状态：**v1.1**（2026-11-12，Phase 1 收口）。阈值在 T6 冻结；v1.1 新增“无 skip 默认门 + L4-Real/L4-Process 证据要求”，并把真实 sshd/自托管 DSH Remote 从 deferred 提升为本轮必验（不再依赖外部账号）。
 > 依据：计划 §4.3、§7；`research/dsh-ios-research/12-reuse-ci-test-plan.md`（官方复用方案）；`research/dsh-ios-research/07-verification.md`（43 项口径复核）；`.agents/skills/review/references/contract-gates.md`；`app/ios/README.md`（分支真实结构）。
 > 使用：T22 全量验证按本文件执行；未覆盖项必须进 `acceptance-report.md` 的 deferred 表并说明原因。
 
@@ -21,6 +21,19 @@
 
 **官方测试基线锚点**：`ab2d179c`（run [42546357246](https://github.com/ccch1mneyyy/dsh-Go/actions/runs/42546357246) 三 job 全绿）；HEAD `418868c3` 的 compile job 红于 fixture 漂移。
 **T1 实测基线（2026-11-10，T4 复核）**：仓库 `DSH-Go-iOS/repo` 的 `phase1/base=ef8eba50`（merge `52b78cd7`，merged main `aee6445`；`upstream/main` ref 实测 `aee6445`），工作树干净，app `1.0.14+1`；fixture 测试 5/5 OK；l10n `--check` 63 parts/6301 keys OK；上游线上 v1.0.15=`3edc945f` 未拉入（按计划推迟）。
+
+## 1.1 v1.1 收口门（本轮新增，优先于下文旧口径）
+
+| 门 | 命令 | 通过标准 |
+|---|---|---|
+| 静态/快速 | `scripts/verify.sh --static` / `--fast` | exit 0、skip 0 |
+| 全量（确定性） | `scripts/verify.sh --full` | exit 0、**skip 0**，不需要 `--allow-skip`；goldens 真跑；RunnerTests 无静默过滤 |
+| 真实模型 | `scripts/verify.sh --real` | 真实 opencode-go；缺 key/网络失败 = FAIL，不 skip |
+| 真实远程 | `scripts/verify.sh --remote` | 临时真实 sshd + 自托管 DSH Remote；任一缺失 = FAIL |
+| 进程级 | `Phase1UITests` + 宿主脚本 | 冷启动/续装/自动启动/失败诊断/杀进程持久化全 PASS |
+| 完成度 | `reports/phase1-completion/matrix.md` | 44 验收步骤逐项 PASS；70 AC 逐条证据；无 `DEFERRED-L5`/`DEFERRED-MOCK`/`L4→T22` 占位 |
+
+默认 `--full` 不再接受“iSH guest archive SKIP + `--allow-skip`”作为 Phase 1 绿；iSH archive 只保留 opt-in `--guest`（Phase 2 手动）。任何 skip/排除必须写入 `reports/phase1-completion/skip-audit.md` 并附 verifier 结论。
 
 ## 2. contract-gates 6 门在 Phase 1 的落地
 
@@ -116,7 +129,7 @@
 | 真机签名安装/TestFlight/App Store | 无付费账号；侧载自用 | 同上 |
 | iSH guest 真机 | Phase 1 不构建 iSH | 同上 |
 | iPad/横屏适配 | Phase 1 iPhone only | 同上 |
-| 真实 DSH Remote 服务器 / 真实 TURN | 依赖外部账号/网络 | 同上 |
+| 真实 TURN / 公网 NAT | 依赖外部 TURN；Phase 1 只验 loopback Relay 真实链路 | 同上 |
 | 48MP 大图/视频保存相册 | 内存/媒体 Phase 2 | 同上 |
 
 > **T22a 实测结论（取代 T5 TODO）**：`--full` 的官方子集为 `test/{chat,session,files,remote,engine,runtime}`，排除 13 个 `*_golden_test.dart` 与 14 个引用 `matchesGoldenFile` 的混合文件（macOS 与 Linux golden 基线不一致，T22a 实测 72 个像素失败）；`stop_reconnect_test.dart` 因全量并行下偶发时序失败而在独立进程单跑（16/16 PASS）。保留子集实测 **2272 passed / 12 skipped（live 环境开关）/ 0 failed**。具体命令见 `ci.md` §7.4。

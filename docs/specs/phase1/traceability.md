@@ -1,6 +1,7 @@
 # Phase 1 追溯矩阵（traceability.md）
 
-> 状态：T4-draft（staging）。**规则：缺一行不得合并。**
+> 状态：**v1.1**（2026-11-12，Phase 1 收口）。v1 冻结 69 AC；v1.1 增 **D2-03-AC4**，共 **70** 行。**规则：缺一行不得合并。**
+> 收口轮口径：`DONE` 只表示“测试存在”；**DoD 3 的合格证据必须是 L4-Real**（真实 opencode-go/真实 SSH/真实自托管 DSH Remote），T22 之前写的“L4→T22”行在本轮 T37 必须换成实际运行日志；仍为 deferred 的行只允许原计划的 Phase 1 外项（真机/APNs/iSH/v1.0.15）。
 > 用途：能力 ID ↔ spec 章节 ↔ 实现文件 ↔ 测试用例 ↔ 验收记录。开发/验收过程中逐行填写；任何 spec 变更需同步本表 + Lead 批准。
 > 图例：`PLANNED` = 已定义但尚未写测试；`RED` = 已写失败测试（附失败原因）；`GREEN` = 测试通过；`L5` = 手工；`DEFERRED` = Phase 1 不做（需在 acceptance-report 说明）；`BLOCKED` = 有阻塞（写明）。
 > 基线行（T1/T3）与 cross-cutting 行见 §1–§2。
@@ -44,6 +45,7 @@
 | D2-03-AC1 | capability-spec.md#D2-03 | app/lib/ui/providers/provider_form_page.dart; app/lib/ui/engine_settings/; app/lib/secrets/secure_storage.dart; packages/dsh_client/lib/src/engine_settings_api.dart | `D2-03_add_custom_provider_saves_key_to_keychain` + `D2-03_provider_keys_use_the_secure_storage_prefix` + `D2-03_saved_model_appears_in_model_catalog_after_invalidation` | L2+L4 | auto | `app/test/phase1/d2_03_provider_config_test.dart`；报告 §4（Key 进 Keychain 抽象、SharedPreferences 无明文） | DONE（L2；L4 mock 3901→T22） |
 | D2-03-AC2 | capability-spec.md#D2-03 | app/lib/ui/providers/provider_form_page.dart; app/lib/ui/engine_settings/; app/lib/secrets/secure_storage.dart; packages/dsh_client/lib/src/engine_settings_api.dart | `D2-03_invalid_base_url_shows_error` + `D2-03_rejected_key_shows_readable_error_and_saves_nothing` + `D2-03_base_url_validation_rejects_unusable_urls` | L2 | auto | `app/test/phase1/d2_03_provider_config_test.dart`；报告 §7.4 已知例外（profile-first） | DONE（L2；AC2 事务性边缘→follow-up） |
 | D2-03-AC3 | capability-spec.md#D2-03 | app/lib/ui/providers/provider_form_page.dart; app/lib/ui/engine_settings/; app/lib/secrets/secure_storage.dart; packages/dsh_client/lib/src/engine_settings_api.dart | `D2-03_edit_provider_isolated_to_one_channel` | L2 | auto | `app/test/phase1/d2_03_provider_config_test.dart` | DONE（L2） |
+| D2-03-AC4 | capability-spec.md#D2-03 | app/lib/state/providers_state.dart; app/lib/ui/providers/provider_form_page.dart; packages/dsh_client/lib/src/providers_api.dart | `D2-03_provider_headers_roundtrip_and_validate` + `D2-03_provider_headers_sent_on_inference` | L2+L4-Real | auto | T28：`app/test/phase1/d2_03_provider_headers_test.dart`、`packages/dsh_client/test/providers_api_test.dart`、真实网关 L4 | PLANNED（本轮 T28） |
 | D2-04-AC1 | capability-spec.md#D2-04 | app/lib/ui/chat/model_sheet.dart; app/lib/ui/chat/chat_header.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D2-04_switch_model_applies_to_next_turn` + `D2-04_model_selection_persists_via_select_model` | L2+L4 | auto | `app/test/phase1/d2_04_model_switch_test.dart`；报告 §4（session/selectModel 请求体） | DONE（L2；L4 mock 请求 model→T22） |
 | D2-04-AC2 | capability-spec.md#D2-04 | app/lib/ui/chat/model_sheet.dart; app/lib/ui/chat/chat_header.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D2-04_thinking_levels_hidden_when_unsupported` | L2+L4 | auto | `app/test/phase1/d2_04_model_switch_test.dart`（reasoningEffort=max/隐藏） | DONE（L2；L4→T22） |
 | D2-04-AC3 | capability-spec.md#D2-04 | app/lib/ui/chat/model_sheet.dart; app/lib/ui/chat/chat_header.dart; app/lib/state/chat_state.dart; packages/dsh_client/lib/src/session_api.dart | `D2-04_switch_failure_keeps_previous_model` + `D2-04_switch_failure_keeps_previous_model_and_draft` + `D2-04_no_models_offers_configuration_entry` | L2 | auto | `app/test/phase1/d2_04_model_switch_test.dart`；报告 §7.6 | DONE（L2；发送时渠道被删回退→follow-up） |
@@ -109,5 +111,5 @@
 
 ## 4. 统计（自动检查用）
 
-- 能力 ID：24；AC 行：69。
-- 目标：Phase 1 合并前 `PLANNED`/`RED` = 0（全部 GREEN 或 DEFERRED-with-reason）。
+- 能力 ID：24；AC 行：**70**（69 + D2-03-AC4）。
+- 目标：Phase 1 v1.1 合并前 `PLANNED`/`RED` = 0（全部 GREEN 或 DEFERRED-with-reason）；收口轮结束时 70 行都必须有实际执行证据，`L4→T22` 占位不得保留。

@@ -1,7 +1,7 @@
 # Phase 1 Mock / Fixture 设计（mocks.md）
 
-> 状态：T4-draft（staging）。骨架实现：`test/fixtures/mock_model_server.mjs`（本次交付）；fake host/transport 为设计（实现分别在 T12/T19–T21 落地）。
-> 原则：**不依赖真实模型/真实服务器/真实 API Key**；mock 必须确定性、可记录、可断言，不能"只回 200"。
+> 状态：**v1.1**（2026-11-12，Phase 1 收口）。骨架实现：`test/fixtures/mock_model_server.mjs`；fake host/transport 已落地（T12/T19–T21）。
+> 原则（v1.1 修订）：mock **只用于 L1/L2 边界与确定性时序**；DoD 3 的验收与演示一律走 L4-Real（真实 opencode-go / 真实 sshd / 真实自托管 DSH Remote）。mock 必须确定性、可记录、可断言，不能"只回 200"。
 > 与官方一致：官方 CI 也是"真引擎 + 假模型/合成模型 + 生产审批链"（`tooling/ios/engine-smoke/drive.mjs`、`guest-drive.mjs`），Phase 1 沿用该范式。
 
 ## 1. 端口与凭据约定（全 Phase 1 统一）
@@ -11,9 +11,9 @@
 | mock 模型服务 | `http://127.0.0.1:3901` | API Key：`sk-mock-phase1-model`（任意非空也可，mock 不校验但记录） | 给 DSH 引擎当 OpenAI 兼容渠道；**不要**用 3080（本机引擎端口）或真实服务端口 |
 | fake DSH host | `http://127.0.0.1:3902` | token：`mock-host-token-phase1`（Authorization/`?token=` 两种都接受，模拟真实握手） | 远程主机（D1-09/10/11）的假 host |
 | fake web / 页面（可选） | `http://127.0.0.1:3903` | — | 后续网页版/WebView 用例预留 |
-| fake SSH server（可选） | `127.0.0.1:3904` | 测试用临时密钥（**不得**用真实 key） | 仅在需要真实 TCP SSH 子集时启用；优先用 fake SSH transport |
+| 真实 sshd（v1.1 必验） | `127.0.0.1:22422` | 临时 host/client key（**不得**使用用户真实 key） | 非特权 sshd，独立 `AuthorizedKeysFile`、临时 HOME/DSH_HOME；不改 `~/.ssh` |
 | 本机引擎（真） | `http://127.0.0.1:3080` | 由引擎 stdout token 换取 cookie | 官方既有约定（`docs/architecture.md:91-95`）；mock 不得占用此端口 |
-| DSH Remote 真实服务器 | 不固定 | 测试账号 | Phase 1 默认不需要；L5 可选 |
+| DSH Remote 真实服务器 | 动态（loopback） | 自托管测试账号（运行时生成） | v1.1 必验：上游 `apps/server` + Host 插件；凭据只在 runtime，临时目录内 |
 
 **规则**：
 1. mock 端口固定（便于手工调试）；测试 harness 可用 `--port 0` 取随机端口，并从服务启动日志读取实际端口。

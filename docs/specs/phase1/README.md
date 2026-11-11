@@ -1,6 +1,7 @@
-# Phase 1 Spec/测试基线（验收完成 · T22/T22b）
+# Phase 1 Spec/测试基线（v1.1 收口中）
 
-> 状态：**Phase 1 验收完成（2026-11-11）**。Spec 基线 T4 冻结 `spec-phase1-v1`；Wave 0–4（T1–T21）全部完成；T22 自动化门与 T22b 模拟器验收完成；T23 交付文档落盘。当前代码基线 `phase1/base=56111af8`（+T22b 未提交测试改动）。
+> 状态：**v1.1 收口执行中（2026-11-12）**。2026-11-11 的 T22/T23 结果只作为历史证据；本轮按 `docs/plans/2026-11-12-phase1-completion.md` 补齐 DoD 2/3/4（真实模型、审批、进程级、真实 SSH/DSH Remote、无 skip、重录演示）。
+> 历史：**Phase 1 T22/T23 完成（2026-11-11）**。Spec 基线 T4 冻结 `spec-phase1-v1`；Wave 0–4（T1–T21）全部完成；T22 自动化门与 T22b 模拟器验收完成；T23 交付文档落盘。当前代码基线 `phase1/base=56111af8`（+T22b 未提交测试改动）。
 > 验收结论：`--fast` pass=13/fail=0/skip=0；`--full` 曾 pass=21/fail=0/skip=1（iSH guest archive 显式 allow-skip）；RunnerTests 366/366；E2E 17 Pro + SE3 PASS；**无 FAIL**；27 个 L5 步骤 + 1 个 mock 受限步骤 deferred（逐项表见 acceptance-report §4 的 25 项归并）。R3 修复后的最终 `--full` 已重跑：**pass=21/fail=0/skip=1（仅 iSH guest archive，显式放行）**，详见 `acceptance-report.md` §2.1/§9。
 > 依据：`docs/plans/2026-11-10-phase1-b-implementation.md` §0–§9；`research/dsh-ios-research/{01,02,03,07,10,11,12}.md`。
 > 版本口径（Lead 已定）：merge 目标钉 **`aee6445`（v1.0.14）**；观察到 upstream/main=`3edc945f`（v1.0.15）仅记录，**不合并 v1.0.15**（见 §4 V），Phase 2 同步。
@@ -8,7 +9,8 @@
 
 ## 0. 最终验收入口
 
-- 验收报告（环境/门禁/24 ID·69 AC/25 项/修复/deferred/证据/最终门禁回填）：`acceptance-report.md`
+- **本轮收口计划**：`docs/plans/2026-11-12-phase1-completion.md`；缺口矩阵：`completion-matrix.md`
+- 验收报告（历史 v1；本轮 T39 重发 v2）：`acceptance-report.md`
 - Phase 2 功能线与遗留技术债：`phase2-backlog.md`
 - 仓库版计划（T1–T23 勾选与事实）：`docs/plans/2026-11-10-phase1-b-implementation.md`
 - 最终门禁结果：**pass=21/fail=0/skip=1（exit 0）**，日志 `reports/phase1/acceptance-run/t22b-verify-full-rerun.log`；T22b 首跑 18/3/1 已在 `acceptance-report.md` §8.4 留证
