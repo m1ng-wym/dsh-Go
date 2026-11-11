@@ -184,7 +184,7 @@
 | 任务证据 | `reports/wave1/*.md`、`reports/wave2/*.md`；T1–T6 报告与 `reports/env/t3-build-spike.md` |
 | 规格/追溯 | `docs/specs/phase1/{capability-spec,traceability,verification-baseline,acceptance-checklist,ci,test-plan,mocks,design}.md` |
 | CI | GitHub Actions `m1ng-wym/dsh-Go` → `Phase 1 verify`：[42975387409](https://github.com/m1ng-wym/dsh-Go/actions/runs/42975387409)（c3070795 最终 success）；R3 修复 run 42966279010 亦 success |
-| 演示录屏 | `reports/phase1/demo-6min.mp4`（5m15s / 47.5MB，H.264；素材 `reports/phase1/raw/`、说明 `reports/phase1/demo-6min.md`） |
+| 演示录屏 | `reports/phase1/demo-6min.mp4`（**5:12.47** / 44.8 MiB / 1080×1920 H.264 30fps / 无音轨；SHA-256 `a29c8bea07f34c658932ebd2026db4dd95f2a810b2915cf32e3199b3bf8de3ce`；素材 `reports/phase1/raw/`、字卡/裁切 `demo-assets/`+`demo-work/`、时间线与命令见 `reports/phase1/demo-6min.md`） |
 | 计划 | `docs/plans/2026-11-10-phase1-b-implementation.md` |
 
 ---
