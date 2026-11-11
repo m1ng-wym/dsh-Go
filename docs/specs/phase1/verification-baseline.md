@@ -119,7 +119,7 @@
 | 真实 DSH Remote 服务器 / 真实 TURN | 依赖外部账号/网络 | 同上 |
 | 48MP 大图/视频保存相册 | 内存/媒体 Phase 2 | 同上 |
 
-> **TODO（T5）**：官方 Flutter 全量测试（936 文件）在 Phase 1 `--full` 的执行范围需确认——建议只跑与 Phase 1 模块相关的官方测试子集（chat/session/files/engine/remote），**排除 goldens**（Linux 字体基线不可在 macOS 跑；具体排除命令在 T5 由实测确定并写入 `verify.sh`）。
+> **T22a 实测结论（取代 T5 TODO）**：`--full` 的官方子集为 `test/{chat,session,files,remote,engine,runtime}`，排除 13 个 `*_golden_test.dart` 与 14 个引用 `matchesGoldenFile` 的混合文件（macOS 与 Linux golden 基线不一致，T22a 实测 72 个像素失败）；`stop_reconnect_test.dart` 因全量并行下偶发时序失败而在独立进程单跑（16/16 PASS）。保留子集实测 **2272 passed / 12 skipped（live 环境开关）/ 0 failed**。具体命令见 `ci.md` §7.4。
 
 ## 6. 阈值冻结（T6 实测，2026-11-10；模拟器）
 
@@ -171,13 +171,13 @@ notes: ""
 | 门禁级 | Phase 1 要求 | 承载 workflow | 本地命令（等价） | 状态 |
 |---|---|---|---|---|
 | L0 静态 | 必须绿 | `phase1-verify.yml`（Linux，新） | `./scripts/verify.sh --static` | ✅ 已实测：exit 0 / pass=7 fail=0 skip=0（Lead 修复产品 analyze 后） |
-| L0/L1/L2 快速 | PR 前建议绿 | `verify.sh --ci` 本地/轻 CI | `./scripts/verify.sh --ci` | ⚠️ 本地 macOS 有 2 个环境/产品限制（CJK 字体缺失→SKIP；`dsh_go_heartbeat_test` 已知红），CI 侧按 `ci.yml` 字体安装后可跑 |
+| L0/L1/L2 快速 | PR 前建议绿 | `verify.sh --ci` 本地/轻 CI | `./scripts/verify.sh --ci` | ✅ 2026-11-11 本机 `--fast`（`DSH_TEST_FONT_DIR=DSH-Go-iOS/.fonts`）**pass=13 fail=0 skip=0**；无字体环境按设计 SKIP（exit 1），fail-on-skip 未放宽（`reports/T22/t22a-verify-fast-font-1215.log`） |
 | L0 官方工具门 | 必须绿 | `phase1-verify.yml` + `ios-compile.yml` | guest-embedding `-v`、native-loader `-v`、host-core `--ios/--hap` | ✅ 5/5、4/4、exit 0 |
 | L3 构建门 | 必须绿 | `ios-compile.yml` `compile` job | `build.sh --simulator --debug` + `--release --no-codesign` | ✅ T3 构建信号 + T5 重跑（`reports/T5-ci.md` §5） |
 | L4 引擎门 | 必须绿（Phase 1 核心回归） | `ios-compile.yml` `engine` job | `bash test/fixtures/run_engine_smoke.sh` | ✅ 实测 PASS（真引擎+假模型；§4） |
-| L3 Swift 契约 | 必须绿 | `ios-compile.yml` engine job（Swift contracts） | `xcodebuild test … -only-testing:RunnerTests` | ✅ 官方 14 suite 保留；`Phase1*Tests` 由 T7 新增 |
-| 构建产物形状 | 必须绿 | `ios-compile.yml`（`check-archive.sh`） | `bash tooling/ios/check-archive.sh` | ✅ 官方 job 保留（T3 已跑 unsigned build） |
-| L4 App 内引擎 | 必须绿 | `ios-compile.yml` engine job（`app-check.mjs`） | 官方 `app-check.mjs`（需构建产物） | ⏳ T7/T22 接线（官方 job 保留） |
+| L3 Swift 契约 | 必须绿 | `ios-compile.yml` engine job（Swift contracts） | `xcodebuild test … -only-testing:RunnerTests` | ✅ 官方 14 suite 保留；`Phase1*Tests` 由 T7 新增。2026-11-11 过滤 `NativeToolsTests/testSystemTools`（D6 deferred）后 **363 passed / 0 failed / TEST SUCCEEDED** |
+| 构建产物形状 | Phase 1 **deferred** | `ios-compile.yml`（`check-archive.sh`） | `bash tooling/ios/check-archive.sh` | ⏸ Phase 1 不构建 iSH：脚本要求 `DshGuest*`/许可文件，T22a 改为明确 SKIP（`--allow-skip` 记录）；`--release --no-codesign` 构建仍 PASS |
+| L4 App 内引擎 | 必须绿 | `ios-compile.yml` engine job（`app-check.mjs`） | 官方 `app-check.mjs`（需构建产物）；`integration_test/phase1_test.dart` | ✅ 2026-11-11 T22a E2E：17 Pro + SE3 均 PASS（真 App + 真引擎 + mock 模型，6 个流式前缀）；`reports/T22/T22a-report.md` |
 | iSH / guest | **deferred**（Phase 1 不构建） | `ios-guest.yml`（无自动触发）、`ios-compile.yml` guest steps（`if: false`） | — | ⏸ 文件保留供 Phase 2 |
 | OHOS | **deferred**（D3=(a)） | `ohos-compile.yml`（无自动触发） | `verify.sh --ci` 的 `host-core.py` 生成检查替代 | ⏸ 源码保留（iOS 构建输入） |
 | 手机操控 / phone runner | **deferred**（Phase 2） | `ios-compile.yml` `phone-protocol` job（`if: false`） | — | ⏸ 保留 |

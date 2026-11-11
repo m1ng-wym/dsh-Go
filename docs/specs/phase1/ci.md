@@ -80,3 +80,50 @@
 - 改（允许的增补）：`docs/specs/phase1/verification-baseline.md` §8 CI 映射（逐条列在报告）
 
 *T5 · 2026-11-10。*
+
+
+## 7. T22a 自动化门接线（2026-11-11）
+
+> 依据：计划 §7.1（自动化门全绿、无 skip）、`verification-baseline.md` §8、T22a 实测（`reports/T22/T22a-report.md`）。本节只记录门禁接线，不改变 Phase 1 能力范围。
+
+### 7.1 `--fast`：真实存在的 Phase 1 测试目录
+
+T7–T21 的 L1/L2 用例集中在能力子目录，不是 `test/unit`/`test/widget`：
+
+```bash
+flutter test test/phase1 test/chat/phase1 test/engine/phase1 test/files/phase1
+```
+
+`scripts/verify.sh --fast` 逐目录运行它们（仍保留字体前置检查与 exit 4 → SKIP 语义），fail-on-skip / PASS=0 失败不变。
+
+### 7.2 L4：`integration_test/phase1_test.dart` + canonical mock
+
+- 新增 `app/integration_test/phase1_test.dart`：真实 App + 真实 NodeMobile 引擎 + mock 模型，覆盖首屏/引导、install（含已安装幂等）、start 到 running、自定义渠道 + 模型选择、新对话发送、流式器与结束态；不 skip，失败带 `[phase1-e2e]` 原因与可见文本转储。
+- 新增 `app/integration_test/run_phase1_e2e.sh`：解析设备名→UDID、启动/复用 `test/fixtures/mock_model_server.mjs`（127.0.0.1:3901）、`simctl uninstall` 保证首次启动、`DSH_IOS_GUEST_BUILD=0`、运行测试并在失败时输出 mock 日志。
+- 该测试使用 mock 的 **模型名后缀**（`mock-phase1-model:slow`）触发慢速流，因为 DSH 引擎会自动发起 session title 生成请求，一次性 `POST /__mock/scenario` 会被 title 请求消费（T22a 实测证据）。
+- 引擎 stop→installed 的 L4 仍由 `tooling/ios/engine-smoke`（T8/T22）覆盖；`phase1_test` 不调用 stop，以规避已记录的 iOS phone-bridge NSURLSession 竞态崩溃（见 T22a 报告"风险"）。
+
+### 7.3 L3：RunnerTests
+
+- 命令：`xcodebuild test … -only-testing:RunnerTests -skip-testing:RunnerTests/NativeToolsTests/testSystemTools`。
+- 2026-11-11 实测：过滤前 363 个用例中 **362 pass + 1 fail**，唯一失败 `NativeToolsTests.testSystemTools`（60.4s 超时，`reports/T22/t22a-runnertests.log`）依赖系统提醒事项/通讯录/定位权限与系统工具，属 Phase 1 **D6 deferred**（`verification-baseline.md` §3 #33/#35/#37、§5），因此最小过滤只排除该用例；其余官方 suite 全部保留执行。过滤后 `--full` 实测 **363 passed / 0 failed / TEST SUCCEEDED**（`reports/T22/t22a-verify-full-1222.log`）。
+- destination 使用解析后的 UDID（本机存在两个同名 iPhone 17 Pro，按名字会歧义）。
+
+### 7.4 官方 Flutter 子集与 archive 检查（T22a 实测调整）
+
+- `--full` 的官方 Flutter 子集（`test/{chat,session,files,remote,engine,runtime}`）在 macOS 上**排除所有引用 `matchesGoldenFile` 的文件**：golden 按 Linux 字体渲染生成，本机像素基线不一致（T5 已记录；`session_detail_test`/`chat_features_test` 等 72 项失败均为 `Pixel test failed`）。部分文件混有行为测试与 golden，且 golden 名称不总含 "golden"，所以按文件排除：实测 72 个失败分布在 14 个文件；子集共 262 个测试文件，排除 13 个 `*_golden_test.dart` 与 14 个混有 golden 的文件（共 **27 个**，保留 **235 个**，其余约 2272 个用例 PASS/~12 个 live 环境 SKIP）；Phase 1 行为覆盖仍由 `--fast` 的 phase1 目录与保留的官方文件保证。
+- `test/chat/stop_reconnect_test.dart` 在数百个测试并行时有时序 flake（全量下 P12 B1/B2 偶发失败，隔离运行 3/3、本次 16/16 PASS），因此从大子集移出并在**独立进程**中单独运行，不丢覆盖。
+- `archive shape check` 依赖 `DshGuest.framework`/`DshGuestBridge.framework` 及其 source/license notices，只有 iSH guest 构建才产生；Phase 1 deferred（计划 §1、`verification-baseline.md` §5）。因此该步在 guest 产物缺失时输出明确 `SKIP`（exit 4），`--full` 需以 `--allow-skip="Phase 1 iSH guest deferred: check-archive needs DshGuest"` 运行，并把该 deferral 写入报告；不做假绿。本机还需要 `RUNNER_TEMP`（CI 自带），verify.sh 已在调用前补临时目录。
+- `scripts/verify.sh --full` 的构建/engine smoke 步骤保持不变（带 `DSH_IOS_GUEST_BUILD=0`）。
+- `VERIFY_STEP_LOG_DIR=<dir>` 可选：`run_step_skip4` 会把每步完整输出写入 `<dir>/<step>.log`，供 T22 记录。
+
+本机（macOS）完整命令：
+
+```bash
+cd repo
+DSH_TEST_FONT_DIR="$PWD/../.fonts" \
+VERIFY_STEP_LOG_DIR="$PWD/../reports/T22/steps" \
+  ./scripts/verify.sh --full --allow-skip="Phase 1 iSH guest deferred: check-archive needs DshGuest"
+```
+
+`--full` 的 PASS 条件因此是：除 archive 的 guest deferral 外全部步骤 PASS；任何其它 SKIP 仍会让命令 exit 1。

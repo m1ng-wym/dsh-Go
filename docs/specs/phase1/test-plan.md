@@ -130,11 +130,14 @@ repo/
 | 档 | 内容 | 用时目标 |
 |---|---|---|
 | `--static` | L0：`flutter analyze`、`dart analyze`（packages）、`node --check`/`node --test test/unit`（语法/纯单测）、l10n/guide `--check`、Swift `swiftc -typecheck`（无 Xcode 时的可用子集） | < 3 min |
-| `--fast` | `--static` + L1/L2（`flutter test test/unit test/widget test/phase1` + packages `dart test` + Node 单测） | < 10 min |
-| `--full` | `--fast` + L3（RunnerTests Phase 1 suite）+ L4（`integration_test/phase1_test.dart` 在 iPhone 17 Pro 与 SE3）+ 官方 engine smoke（mock 模型）+ `xcodebuild build`（模拟器/设备 unsigned）+ Archive 形状检查（`tooling/ios/check-archive.sh`） | < 45–60 min |
+| `--fast` | `--static` + L1/L2（`flutter test test/phase1 test/chat/phase1 test/engine/phase1 test/files/phase1` + packages `dart test` + Node 单测） | < 10 min |
+| `--full` | `--fast` + L3（RunnerTests；仅排除 D6 deferred 的 `NativeToolsTests/testSystemTools`）+ L4（`integration_test/phase1_test.dart` 在 iPhone 17 Pro 与 SE3，经 `app/integration_test/run_phase1_e2e.sh` 启动 canonical mock 模型 127.0.0.1:3901）+ 官方 engine smoke（mock 模型）+ `xcodebuild build`（模拟器/设备 unsigned）；Archive 形状检查依赖 iSH guest（Phase 1 deferred），verify 输出 SKIP 并需 `--allow-skip` 记录 | < 45–60 min |
 
 - `--full` **默认 fail-on-skip**：任何 skip 需 `--allow-skip=<reason>` 显式放行并写进报告（计划 §7.1）。
 - `--list` 列出将执行的步骤（供 verifier/Lead 核对）；`--dry-run` 只打印命令。
+- **测试目录口径（T22a）**：本分支的 L1/L2 用例落在能力子目录（`test/phase1`、`test/chat/phase1`、`test/engine/phase1`、`test/files/phase1`），没有独立的 `test/unit`/`test/widget`；`--fast` 已按真实目录接线，`--full` 另跑官方相关大子集（排除 goldens）。
+- **模拟器解析（T22a）**：`--full` 把设备名解析为 UDID（同名设备存在时不歧义），可用 `DSH_SIM_17PRO`/`DSH_SIM_SE3` 覆盖；设置 `VERIFY_STEP_LOG_DIR=<dir>` 可把每步输出保存为日志。
+- **L4 前置（T22a）**：wrapper 在 127.0.0.1:3901 启动 `test/fixtures/mock_model_server.mjs`，用 `simctl uninstall` 保证首次启动路径，并设置 `DSH_IOS_GUEST_BUILD=0`（Phase 1 不构建 iSH；与构建门一致）。
 - CI：`.github/workflows/phase1-verify.yml`（T5 新增）在 `phase1/**` PR 上跑 `--fast`；`phase1/integration` 上跑 `--full`（macOS 仅 L3/L4 需要）。
 
 ### 6.2 GitHub Actions（继承官方 + Phase 1 增量）

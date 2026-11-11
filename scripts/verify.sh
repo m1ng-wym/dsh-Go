@@ -14,11 +14,15 @@
 #                   Node syntax checks, mock-model self-test
 #   --ci     : --static + --fast + tooling gates (guest-embedding / native-loader /
 #                   host-core); everything a Linux runner can do without Xcode
-#   --fast   : --static + L1/L2 — flutter test (phase1/unit/widget), dart test,
-#                   node --test test/unit
-#   --full   : --ci + L3 RunnerTests + L4 integration_test/phase1_test.dart on
-#                   iPhone 17 Pro & iPhone SE3 + build (simulator + device unsigned)
-#                   + official engine smoke (mock model) + archive shape check
+#   --fast   : --static + L1/L2 — flutter test on the Phase 1 dirs
+#                   (test/phase1, test/chat/phase1, test/engine/phase1,
+#                   test/files/phase1), dart test, node --test test/unit
+#   --full   : --ci + L3 RunnerTests (deferred system-tools suite excluded) +
+#                   L4 integration_test/phase1_test.dart on iPhone 17 Pro & iPhone SE3
+#                   via integration_test/run_phase1_e2e.sh (canonical mock model at
+#                   127.0.0.1:3901) + build (simulator + device unsigned) + official
+#                   engine smoke (mock model) + archive shape check, which reports
+#                   SKIP while the Phase 1 iSH guest is deferred (--allow-skip records it)
 #
 # Behaviour:
 #   - Locates the repo from $DSH_REPO, the parent of scripts/ (normal checkout),
@@ -150,8 +154,15 @@ run_step_skip4() {
   fi
   if [ "$DRY_RUN" = "1" ]; then log "[dry-run] [$tier] $name — would run: $cmd"; return 0; fi
   info "[$tier] $name"
-  local out rc
+  local out rc logfile=""
+  if [ -n "${VERIFY_STEP_LOG_DIR:-}" ]; then
+    mkdir -p "$VERIFY_STEP_LOG_DIR" 2>/dev/null || true
+    logfile="$VERIFY_STEP_LOG_DIR/$(printf '%s' "$name" | tr ' /()' '____').log"
+  fi
   out="$( cd "$REPO" && eval "$cmd" 2>&1 )"; rc=$?
+  if [ -n "$logfile" ]; then
+    printf '%s\n' "$out" >"$logfile" 2>/dev/null && info "log: $logfile"
+  fi
   if [ "$rc" -eq 4 ]; then
     SKIP=$((SKIP+1)); SKIPPED_STEPS+=("$name ($(printf '%s' "$out" | tail -n 1))")
     warn "SKIP  [$tier] $name — $(printf '%s' "$out" | tail -n 1)"
@@ -267,6 +278,39 @@ info "repo: $REPO"
 info "mode: --$MODE"
 [ -n "$ALLOW_SKIP" ] && info "allow-skip: $ALLOW_SKIP"
 
+# ---- iOS Simulator resolution (--full) -------------------------------------
+# Names are resolved to UDIDs because a machine can have more than one simulator
+# with the same name (e.g. a duplicated iPhone 17 Pro); flutter/xcodebuild both
+# become ambiguous by name. DSH_SIM_17PRO / DSH_SIM_SE3 override the choice.
+sim_udid() {
+  have xcrun || return 0
+  have python3 || return 0
+  xcrun simctl list devices available -j 2>/dev/null | python3 -c '
+import json, sys
+name = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(0)
+for runtime, rows in data.get("devices", {}).items():
+    if "iOS" not in runtime:
+        continue
+    for row in rows:
+        if row.get("name") == name and row.get("isAvailable", True):
+            print(row.get("udid", ""))
+            raise SystemExit(0)
+' "$1"
+}
+if [ "$MODE" = "full" ] || [ "$MODE" = "list" ]; then
+  IOS_SIM_17PRO="${DSH_SIM_17PRO:-$(sim_udid "iPhone 17 Pro")}"
+  IOS_SIM_SE3="${DSH_SIM_SE3:-$(sim_udid "iPhone SE3")}"
+  info "simulators: iPhone 17 Pro=${IOS_SIM_17PRO:-<not found>} iPhone SE3=${IOS_SIM_SE3:-<not found>}"
+else
+  IOS_SIM_17PRO=""
+  IOS_SIM_SE3=""
+fi
+export IOS_SIM_17PRO IOS_SIM_SE3
+
 # ---- L0 static -------------------------------------------------------------
 run_step_need_cmd static "flutter analyze" flutter \
   'cd app && flutter analyze --no-pub'
@@ -287,8 +331,8 @@ run_step static "node syntax check (phase1 tests)" "test" \
 # ---- L1/L2 fast ------------------------------------------------------------
 if [ "$MODE" = "ci" ] || [ "$MODE" = "fast" ] || [ "$MODE" = "full" ] || [ "$MODE" = "list" ]; then
   # Phase 1 test dirs land in T7+; until then report SKIP (never a silent pass).
-  run_step_skip4 fast "flutter test (phase1/unit/widget)" "test" \
-    'cd app && FONT="${DSH_TEST_FONT_DIR:-/usr/share/fonts/opentype/noto}/NotoSansCJK-Light.ttc"; { [ -f "$FONT" ] || [ -f /usr/share/fonts/noto-cjk/NotoSansCJK-Light.ttc ]; } || { echo "SKIP: CJK test font missing (set DSH_TEST_FONT_DIR; upstream ci.yml installs fonts-noto-cjk)"; exit 4; }; found=0; for d in test/phase1 test/unit test/widget; do if [ -d "$d" ]; then found=1; flutter test --no-pub "$d" || exit 1; fi; done; [ "$found" = 1 ] || { echo "SKIP: no app test/phase1|unit|widget dirs yet (T7+)"; exit 4; }'
+  run_step_skip4 fast "flutter test (phase1 dirs)" "test" \
+    'cd app && FONT="${DSH_TEST_FONT_DIR:-/usr/share/fonts/opentype/noto}/NotoSansCJK-Light.ttc"; { [ -f "$FONT" ] || [ -f /usr/share/fonts/noto-cjk/NotoSansCJK-Light.ttc ]; } || { echo "SKIP: CJK test font missing (set DSH_TEST_FONT_DIR; upstream ci.yml installs fonts-noto-cjk)"; exit 4; }; found=0; for d in test/phase1 test/chat/phase1 test/engine/phase1 test/files/phase1; do if [ -d "$d" ]; then found=1; flutter test --no-pub "$d" || exit 1; fi; done; [ "$found" = 1 ] || { echo "SKIP: no Phase 1 test dirs (test/phase1, test/chat/phase1, test/engine/phase1, test/files/phase1)"; exit 4; }'
   run_step_need_cmd fast "dart test packages" dart \
     'for p in packages/*/pubspec.yaml; do d="$PWD/$(dirname "$p")"; (cd "$d" && dart pub get --offline >/dev/null 2>&1 || dart pub get >/dev/null && dart test) || exit 1; done'
   run_step fast "node --test test/unit" "test/unit" \
@@ -311,24 +355,46 @@ fi
 if [ "$MODE" = "full" ] || [ "$MODE" = "list" ]; then
   # Official Flutter subset (heavy; D5=(a) subset + exclude goldens). Moved from --fast to
   # --full in T5 so --ci stays a quick Linux/PR gate; upstream ci.yml still runs the full suite.
-  run_step_skip4 full "flutter test (official phase1-related subset)" "app/test" \
-    'cd app && FONT="${DSH_TEST_FONT_DIR:-/usr/share/fonts/opentype/noto}/NotoSansCJK-Light.ttc"; { [ -f "$FONT" ] || [ -f /usr/share/fonts/noto-cjk/NotoSansCJK-Light.ttc ]; } || { echo "SKIP: CJK test font missing (set DSH_TEST_FONT_DIR; upstream ci.yml installs fonts-noto-cjk)"; exit 4; }; files="$(find test/chat test/session test/files test/remote test/engine test/runtime -name "*_test.dart" ! -name "*_golden_test.dart" 2>/dev/null | sort)"; [ -n "$files" ] || { echo "SKIP: no official subset test files"; exit 4; }; flutter test --no-pub $files'
+  # Goldens are generated against Linux font rendering and cannot match on
+  # macOS (verification-baseline.md §5 TODO, test-plan §6 "排除 goldens"). Some
+  # files mix behavioural and golden tests and a golden's test name does not
+  # always say so, so whole files that reference matchesGoldenFile are left out
+  # of this macOS/Linux-agnostic subset; the Phase 1 behavioural suites stay in
+  # --fast and the golden-bearing files are listed in reports/T22.
+  # stop_reconnect_test is timing-sensitive when dozens of test isolates run at
+  # once (P12 B1/B2 failed under the full-suite load but pass alone, 3/3); it
+  # runs in its own process in the next step instead of being dropped.
+  run_step_skip4 full "flutter test (official phase1-related subset, goldens excluded)" "app/test" \
+    'cd app && FONT="${DSH_TEST_FONT_DIR:-/usr/share/fonts/opentype/noto}/NotoSansCJK-Light.ttc"; { [ -f "$FONT" ] || [ -f /usr/share/fonts/noto-cjk/NotoSansCJK-Light.ttc ]; } || { echo "SKIP: CJK test font missing (set DSH_TEST_FONT_DIR; upstream ci.yml installs fonts-noto-cjk)"; exit 4; }; files="$(find test/chat test/session test/files test/remote test/engine test/runtime -name "*_test.dart" ! -name "*_golden_test.dart" 2>/dev/null | sort)"; [ -n "$files" ] || { echo "SKIP: no official subset test files"; exit 4; }; files="$(printf "%s\n" "$files" | xargs grep -L "matchesGoldenFile" 2>/dev/null | sort)"; files="$(printf "%s\n" "$files" | grep -v "^test/chat/stop_reconnect_test.dart$" | sort)"; [ -n "$files" ] || { echo "SKIP: no non-golden official subset files"; exit 4; }; flutter test --no-pub $files'
+  run_step_skip4 full "flutter test (stop/reconnect timing suite, isolated)" "app/test/chat/stop_reconnect_test.dart" \
+    'cd app && FONT="${DSH_TEST_FONT_DIR:-/usr/share/fonts/opentype/noto}/NotoSansCJK-Light.ttc"; { [ -f "$FONT" ] || [ -f /usr/share/fonts/noto-cjk/NotoSansCJK-Light.ttc ]; } || { echo "SKIP: CJK test font missing (set DSH_TEST_FONT_DIR; upstream ci.yml installs fonts-noto-cjk)"; exit 4; }; flutter test --no-pub test/chat/stop_reconnect_test.dart'
   run_step_need_cmd full "xcodebuild build (simulator)" xcodebuild \
     'cd app && DSH_IOS_GUEST_BUILD=0 bash ../tooling/ios/build.sh --simulator --debug'
   run_step_need_cmd full "xcodebuild build (device, unsigned)" xcodebuild \
     'cd app && DSH_IOS_GUEST_BUILD=0 bash ../tooling/ios/build.sh --release --no-codesign'
-  run_step_need_cmd full "RunnerTests (Phase 1 contract suites)" xcodebuild \
-    'cd app && xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=iPhone 17 Pro" -only-testing:RunnerTests CODE_SIGNING_ALLOWED=NO'
-  run_step_need_cmd full "integration_test phase1 (iPhone 17 Pro)" flutter \
-    'cd app && flutter test --no-pub integration_test/phase1_test.dart -d "iPhone 17 Pro"'
-  run_step_need_cmd full "integration_test phase1 (iPhone SE3)" flutter \
-    'cd app && flutter test --no-pub integration_test/phase1_test.dart -d "iPhone SE3"'
+  # NativeToolsTests/testSystemTools needs the system Reminders/Contacts/
+  # Location permission sheets and tools; Phase 1 marks those D6 capabilities
+  # deferred (verification-baseline.md §3 #33/#35/#37, §5). Excluded explicitly
+  # here, never silently: every other official suite still runs.
+  run_step_need_cmd full "RunnerTests (official contract suites; deferred system-tools case excluded)" xcodebuild \
+    'cd app && dest="${IOS_SIM_17PRO:+id=$IOS_SIM_17PRO}"; DSH_IOS_GUEST_BUILD=0 xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,${dest:-name=iPhone 17 Pro}" -only-testing:RunnerTests -skip-testing:RunnerTests/NativeToolsTests/testSystemTools CODE_SIGNING_ALLOWED=NO'
+  run_step_skip4 full "integration_test phase1 (iPhone 17 Pro, canonical mock)" "app/integration_test/phase1_test.dart" \
+    'bash app/integration_test/run_phase1_e2e.sh --device "${IOS_SIM_17PRO:-iPhone 17 Pro}"'
+  run_step_skip4 full "integration_test phase1 (iPhone SE3, canonical mock)" "app/integration_test/phase1_test.dart" \
+    'bash app/integration_test/run_phase1_e2e.sh --device "${IOS_SIM_SE3:-iPhone SE3}"'
   # [TODO-VERIFY(T5)] exact engine-smoke args (drive.mjs needs simulator/smoke/frameworks/runtime/work/ws);
   # T5 creates test/fixtures/run_engine_smoke.sh wrapper and wires it here.
   run_step full "official engine smoke (real engine + mock model)" "test/fixtures/run_engine_smoke.sh" \
     'bash test/fixtures/run_engine_smoke.sh'
-  run_step full "archive shape check" "tooling/ios/check-archive.sh" \
-    'DSH_IOS_GUEST_BUILD=0 bash tooling/ios/check-archive.sh'
+  # Phase 1 defers iSH (plan §1; verification-baseline.md §5), and
+  # check-archive.sh requires DshGuest.framework/DshGuestBridge.framework plus
+  # their source/license notices, which only a guest build produces. The step
+  # reports an explicit SKIP instead of a false pass or an unexplained failure;
+  # run --full with --allow-skip="Phase 1 iSH guest deferred: check-archive
+  # needs DshGuest" so the deferral is recorded. RUNNER_TEMP is a GitHub
+  # Actions variable, so a local run gets a temp directory of its own.
+  run_step_skip4 full "archive shape check (deferred: iSH guest)" "tooling/ios/check-archive.sh" \
+    'if [ ! -d app/ios/Engine/build/iphoneos/guest/DshGuest.framework ]; then echo "SKIP: Phase 1 defers the iSH guest; check-archive.sh requires DshGuest.framework (Phase 2, see verification-baseline.md §5)"; exit 4; fi; export RUNNER_TEMP="${RUNNER_TEMP:-$(mktemp -d)}"; bash tooling/ios/check-archive.sh'
   # Guest tests: DEFERRED for Phase 1 (iSH not built); not listed so --full has no always-failing step.
 fi
 
