@@ -1,5 +1,12 @@
 # Phase 1 模拟器手工验收清单（acceptance-checklist.md）
 
+> **执行状态（2026-11-11，Phase 1 收口）**：本清单逐项勾选已由自动化验收 run 取代，权威状态见
+> `docs/specs/phase1/acceptance-report.md` §4 与 `DSH-Go-iOS/reports/phase1/acceptance-run/acceptance-results.md`：
+> **PASS 16 / DEFERRED-L5 27 / DEFERRED-MOCK 1 / FAIL 0**（C7/C8 审批卡因引擎默认 `danger-full-access` 不可达，deferred；
+> B2/B5/B6/B7/C4/C5/C9/C10/D1/D2/D3/D5/D7/D8/E1/E3/E4/G1/G2/G4/F1–F5 为 L5 手工/真机 deferred，原因见相应报告）。
+> 下面复选框保留为原始验收脚本，未逐项手勾，**不代表未执行**；"未执行≠通过"的规则由 acceptance-report 的状态表承担。
+
+
 > 状态：T4-draft（staging）。执行时逐项勾选，失败记下构建 SHA、模拟器、现象与日志路径。
 > 环境：iPhone 17 Pro（iOS 26.5）+ iPhone SE3（iOS 26.5）；Flutter 3.47.7；Xcode 26.6；构建 SHA 记录在每项旁。
 > 规则：**未执行 ≠ 通过**；跳过必须写原因并引用 `verification-baseline.md` §5 deferred 清单。
