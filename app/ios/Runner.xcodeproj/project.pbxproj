@@ -47,6 +47,7 @@
 		D5480000000000000000F107 /* IOSPhoneSelfRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000F106 /* IOSPhoneSelfRunnerTests.swift */; };
 		D5490000000000000000A001 /* IOSPhoneHTTPTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5490000000000000000A002 /* IOSPhoneHTTPTests.swift */; };
 		D5480000000000000000E00A /* PhoneRunnerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000E009 /* PhoneRunnerUITests.swift */; };
+		D5A10000000000000000E00A /* Phase1UITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A10000000000000000E009 /* Phase1UITests.swift */; };
 		D5480000000000000000E00C /* PhoneRunnerSupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000E00B /* PhoneRunnerSupport.m */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		D5480000000000000000C0A4 /* SiriIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5480000000000000000C050 /* SiriIntents.swift */; };
@@ -183,6 +184,8 @@
 		D5480000000000000000E00E /* PhoneRunner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PhoneRunner-Bridging-Header.h"; sourceTree = "<group>"; };
 		D5480000000000000000E00F /* PhoneRunner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PhoneRunner.entitlements; sourceTree = "<group>"; };
 		D5480000000000000000E002 /* PhoneRunnerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PhoneRunnerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D5A10000000000000000E009 /* Phase1UITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase1UITests.swift; sourceTree = "<group>"; };
+		D5A10000000000000000E002 /* Phase1UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Phase1UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -272,6 +275,14 @@
 			path = PhoneRunner;
 			sourceTree = "<group>";
 		};
+		D5A10000000000000000E008 /* Phase1UITests */ = {
+			isa = PBXGroup;
+			children = (
+				D5A10000000000000000E009 /* Phase1UITests.swift */,
+			);
+			path = Phase1UITests;
+			sourceTree = "<group>";
+		};
 		331C8082294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -315,6 +326,7 @@
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				D5480000000000000000E008 /* PhoneRunner */,
+				D5A10000000000000000E008 /* Phase1UITests */,
 				D5480000000000000000B011 /* ShareExtension */,
 			);
 			sourceTree = "<group>";
@@ -325,6 +337,7 @@
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
 				D5480000000000000000E002 /* PhoneRunnerUITests.xctest */,
+				D5A10000000000000000E002 /* Phase1UITests.xctest */,
 				D5480000000000000000B009 /* ShareExtension.appex */,
 			);
 			name = Products;
@@ -423,6 +436,21 @@
 			name = PhoneRunnerUITests;
 			productName = PhoneRunnerUITests;
 			productReference = D5480000000000000000E002 /* PhoneRunnerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		D5A10000000000000000E001 /* Phase1UITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D5A10000000000000000E004 /* Build configuration list for PBXNativeTarget "Phase1UITests" */;
+			buildPhases = (
+				D5A10000000000000000E003 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Phase1UITests;
+			productName = Phase1UITests;
+			productReference = D5A10000000000000000E002 /* Phase1UITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		331C8080294A63A400263BE5 /* RunnerTests */ = {
@@ -526,6 +554,7 @@
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 				D5480000000000000000E001 /* PhoneRunnerUITests */,
+				D5A10000000000000000E001 /* Phase1UITests */,
 				D5480000000000000000B010 /* ShareExtension */,
 			);
 		};
@@ -633,6 +662,14 @@
 				D5480000000000000000F103 /* PhoneRunnerBootstrap.swift in Sources */,
 				D55000000000000000000332 /* PhoneRunnerObservation.swift in Sources */,
 				D5480000000000000000E00C /* PhoneRunnerSupport.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D5A10000000000000000E003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D5A10000000000000000E00A /* Phase1UITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -852,6 +889,68 @@
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OBJC_BRIDGING_HEADER = "PhoneRunner/PhoneRunner-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_TARGET_NAME = "";
+				USES_XCTRUNNER = YES;
+			};
+			name = Profile;
+		};
+		D5A10000000000000000E005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.ccch1mneyyy.dshgo.Phase1UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_TARGET_NAME = "";
+				USES_XCTRUNNER = YES;
+			};
+			name = Debug;
+		};
+		D5A10000000000000000E006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.ccch1mneyyy.dshgo.Phase1UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_TARGET_NAME = "";
+				USES_XCTRUNNER = YES;
+			};
+			name = Release;
+		};
+		D5A10000000000000000E007 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.ccch1mneyyy.dshgo.Phase1UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1";
 				TEST_TARGET_NAME = "";
@@ -1223,6 +1322,16 @@
 				D5480000000000000000E005 /* Debug */,
 				D5480000000000000000E006 /* Release */,
 				D5480000000000000000E007 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D5A10000000000000000E004 /* Build configuration list for PBXNativeTarget "Phase1UITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D5A10000000000000000E005 /* Debug */,
+				D5A10000000000000000E006 /* Release */,
+				D5A10000000000000000E007 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
