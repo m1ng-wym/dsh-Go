@@ -34,6 +34,7 @@ abstract class ProviderBackend {
     String? baseUrl,
     String? apiKeyEnv,
     List<ProviderModelSpec>? models,
+    Map<String, String>? headers,
     int? expectedRevision,
   });
 
@@ -114,6 +115,7 @@ class ClientProviderBackend implements ProviderBackend {
     String? baseUrl,
     String? apiKeyEnv,
     List<ProviderModelSpec>? models,
+    Map<String, String>? headers,
     int? expectedRevision,
   }) => client.updateProvider(
     id,
@@ -122,6 +124,7 @@ class ClientProviderBackend implements ProviderBackend {
     baseUrl: baseUrl,
     apiKeyEnv: apiKeyEnv,
     models: models,
+    headers: headers,
     expectedRevision: expectedRevision,
   );
 

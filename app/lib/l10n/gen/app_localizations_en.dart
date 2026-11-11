@@ -6590,6 +6590,39 @@ class L10nEn extends L10n {
   String get engineProviderAlreadyAdded => 'Added';
 
   @override
+  String get providerHeadersAdvanced => 'Advanced';
+
+  @override
+  String get providerHeadersTitle => 'Request headers';
+
+  @override
+  String get providerHeadersHint => 'Extra request headers the gateway requires, e.g. x-opencode-session';
+
+  @override
+  String get providerHeaderName => 'Name';
+
+  @override
+  String get providerHeaderValue => 'Value';
+
+  @override
+  String get providerHeaderAdd => 'Add header';
+
+  @override
+  String get providerHeaderRemove => 'Remove header';
+
+  @override
+  String get providerHeaderInvalidName => 'Use an HTTP token: no spaces, colons or control characters';
+
+  @override
+  String get providerHeaderInvalidValue => 'Values cannot contain line breaks or control characters';
+
+  @override
+  String get providerHeaderDuplicate => 'Duplicate header name (case-insensitive)';
+
+  @override
+  String get providerHeaderLimit => 'At most 20 request headers';
+
+  @override
   String get engineProviderReady => 'Ready';
 
   @override

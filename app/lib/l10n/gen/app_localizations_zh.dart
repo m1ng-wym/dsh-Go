@@ -6256,6 +6256,39 @@ class L10nZh extends L10n {
   String get engineProviderAlreadyAdded => '已添加';
 
   @override
+  String get providerHeadersAdvanced => '高级';
+
+  @override
+  String get providerHeadersTitle => '请求头';
+
+  @override
+  String get providerHeadersHint => '网关要求的额外请求头，比如 x-opencode-session';
+
+  @override
+  String get providerHeaderName => '名称';
+
+  @override
+  String get providerHeaderValue => '值';
+
+  @override
+  String get providerHeaderAdd => '添加请求头';
+
+  @override
+  String get providerHeaderRemove => '删除请求头';
+
+  @override
+  String get providerHeaderInvalidName => '名称只能是 HTTP token（不能有空格、冒号或控制字符）';
+
+  @override
+  String get providerHeaderInvalidValue => '值不能包含换行或控制字符';
+
+  @override
+  String get providerHeaderDuplicate => '请求头名称重复（不区分大小写）';
+
+  @override
+  String get providerHeaderLimit => '最多 20 个请求头';
+
+  @override
   String get engineProviderReady => '可用';
 
   @override

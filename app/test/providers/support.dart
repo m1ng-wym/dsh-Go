@@ -123,6 +123,7 @@ class FakeProviderBackend implements ProviderBackend {
     String? baseUrl,
     String? apiKeyEnv,
     List<ProviderModelSpec>? models,
+    Map<String, String>? headers,
     int? expectedRevision,
   }) async {
     calls.add((
@@ -134,6 +135,7 @@ class FakeProviderBackend implements ProviderBackend {
         'baseURL': ?baseUrl,
         'apiKeyEnv': ?apiKeyEnv,
         if (models != null) 'models': [for (final m in models) m.toJson()],
+        'headers': ?headers,
         'expectedRevision': ?expectedRevision,
       },
     ));
@@ -146,7 +148,7 @@ class FakeProviderBackend implements ProviderBackend {
       baseUrl: baseUrl ?? old.baseUrl,
       apiKeyEnv: apiKeyEnv ?? old.apiKeyEnv,
       models: models ?? old.models,
-      headers: old.headers,
+      headers: headers ?? old.headers,
       modelOverrides: old.modelOverrides,
       defaultContextWindow: old.defaultContextWindow,
       defaultMaxTokens: old.defaultMaxTokens,

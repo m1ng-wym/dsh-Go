@@ -282,6 +282,66 @@ void main() {
       expect(() => client.updateProvider('custom-mygw'), throwsArgumentError);
     });
 
+    test('updateProvider writes headers in one op, an empty map clears them, omitted leaves them', () async {
+      final client = await connect();
+      await client.updateProvider(
+        'custom-mygw',
+        displayName: 'Gateway',
+        headers: const {'x-opencode-session': 'sess-42', 'X-Team': 'ops'},
+        expectedRevision: 4,
+      );
+      expect(mutations.single, {
+        'ns': 'llm-pi-ai',
+        'ops': [
+          {
+            'op': 'set',
+            'path': ['providers', 'custom-mygw', 'displayName'],
+            'value': 'Gateway',
+          },
+          {
+            'op': 'set',
+            'path': ['providers', 'custom-mygw', 'headers'],
+            'value': {'x-opencode-session': 'sess-42', 'X-Team': 'ops'},
+          },
+        ],
+        'expectedRevision': 4,
+      });
+
+      // An explicit empty map removes every custom header.
+      await client.updateProvider('custom-mygw', headers: const {});
+      expect(mutations.last['ops'], [
+        {
+          'op': 'set',
+          'path': ['providers', 'custom-mygw', 'headers'],
+          'value': <String, Object?>{},
+        },
+      ], reason: 'empty map is still a write: it clears the route headers');
+
+      // Omitting headers leaves the stored map alone.
+      await client.updateProvider('custom-mygw', apiKeyEnv: 'CUSTOM_MYGW_API_KEY');
+      expect(mutations.last['ops'], [
+        {
+          'op': 'set',
+          'path': ['providers', 'custom-mygw', 'apiKeyEnv'],
+          'value': 'CUSTOM_MYGW_API_KEY',
+        },
+      ], reason: 'a field this call does not name is not part of the mutate');
+    });
+
+    test('saveProvider carries headers on create', () async {
+      await (await connect()).saveProvider(
+        const ProviderProfile(
+          route: 'custom-mygw',
+          api: 'openai-completions',
+          baseUrl: 'https://gw.example.com/v1',
+          models: [ProviderModelSpec(id: 'qwen3-coder')],
+          headers: {'x-opencode-session': 'sess-42'},
+        ),
+      );
+      final op = (mutations.single['ops'] as List).single as Map<String, Object?>;
+      expect((op['value'] as Map<String, Object?>)['headers'], {'x-opencode-session': 'sess-42'});
+    });
+
     test('removeProvider unsets the route', () async {
       await (await connect()).removeProvider('custom-mygw', expectedRevision: 4);
       expect(mutations.single, {
