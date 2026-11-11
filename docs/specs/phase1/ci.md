@@ -127,3 +127,139 @@ VERIFY_STEP_LOG_DIR="$PWD/../reports/T22/steps" \
 ```
 
 `--full` 的 PASS 条件因此是：除 archive 的 guest deferral 外全部步骤 PASS；任何其它 SKIP 仍会让命令 exit 1。
+
+## 8. T36：Linux fast lane、生成物 drift 与 skip 审计（2026-11-12）
+
+> 依据：计划 §4 W6 T36、`verification-baseline.md` §1.1、`test-plan.md` §1.1 第 5 条、T36 brief。基线 `fc671d2a`；证据在 `reports/phase1-completion/T36/`，skip 审计在 `reports/phase1-completion/skip-audit.md`。本节只记录 CI 门与审计结果，不改 `scripts/verify.sh`（T35b 所有），不改其它 `docs/specs/**`。
+
+### 8.1 Linux Phase 1 fast lane（`phase1-verify.yml` 新 job）
+
+`phase1-verify.yml` 保留 `static` job（L0 + Node tests），新增并行 job `linux-fast-lane`：
+
+- runner：`ubuntu-24.04`，`timeout-minutes: 30`；无 secrets、无签名、无真机、无 macOS runner。
+- Flutter：`3.47.7` 固定版本 + 固定 Linux archive SHA256（与 `static` 相同）。
+- 字体：`apt-get install fonts-noto-cjk fonts-noto-cjk-extra`，`DSH_TEST_FONT_DIR=/usr/share/fonts/opentype/noto`。`fonts-noto-cjk` 只有 Regular/Bold；widget 测试加载的 Light 在 `fonts-noto-cjk-extra`（`app/test/support/test_fonts.dart` 会因缺字体直接失败，不会静默降级）。安装后显式 `test -f` 三个 face 并 `fc-list :lang=zh`。
+- Flutter 测试命令（与 T35 的 `--fast` 子集一致；不跑 goldens，goldens 归 T35a）：
+
+  ```bash
+  cd app
+  flutter test --no-pub test/phase1 test/chat/phase1 test/engine/phase1 test/files/phase1
+  ```
+
+  本机（macOS，CJK 字体目录）2026-11-12 实测：`+88`、`All tests passed!`、22s（`T36/05-flutter-fast-lane-local.log`）。
+- Dart 包测试（timebox 15 min，两个包都跑；失败不会静默）：
+
+  ```bash
+  for p in packages/dsh_client packages/dsh_remote; do (cd "$p" && dart test); done
+  ```
+
+  本机实测：`dsh_client +836 ~31`、`dsh_remote +499 ~4`，两者 exit 0（`T36/06-dart-tests-local.log`）；`~31/~4` 是包内 live/external skip，见 skip 审计 appendix A，T35/T38 决定是否接入 `--real/--remote` 或显式排除。CI 上若超过 step timeout 会红，不会跳过。
+- 触发 paths 增加 `scripts/check-generated-drift.sh`（push 与 PR）。
+
+### 8.2 生成物 drift 守卫（最终口径）
+
+新增 `scripts/check-generated-drift.sh`（可执行）。CI 在依赖解析之后运行：
+
+```bash
+./scripts/check-generated-drift.sh
+```
+
+脚本只把**确定性生成输出**作为硬门：
+
+```bash
+python3 app/tool/l10n_merge.py          # parts 合并 + flutter gen-l10n
+git diff --exit-code -- app/lib/l10n    # 任何变化的 tracked 生成物 = FAIL
+```
+
+**不**把环境相关文件放进硬门（它们是宿主/镜像的解析产物，不是跨平台 oracle；提交它们会让 CI 每次红）：
+
+- `app/analysis_options.yaml`（Flutter 3.47.7 的 project migrator 会补 `ios/**`）
+- `app/pubspec.lock` / `packages/*/pubspec.lock`（pub.dev vs mirror、analyzer 版本随宿主变化）
+
+需要额外观察时用 `DRIFT_WITH_PUB_GET=1 ./scripts/check-generated-drift.sh`：脚本会跑 `flutter pub get`/`dart pub get`，把上述文件的变化打印为 **WARN**，永不作为失败。
+
+本任务用实际 drift 做了 RED，再修复后 GREEN：
+
+- RED（临时把 `engine_zh.arb` / `engine_en.arb` 各加一个未生成的 key）：`l10n_merge` 成功，但 `app/lib/l10n/{app_*.arb,gen/*}` 出现 diff → `exit 1`，日志 `T36/08-revised-drift-red.log`。
+- GREEN（还原 ARB 输入，干净树重跑）：`exit 0`，`T36/08-revised-drift-clean.log`。
+- 另做一次"手改生成物"实验：直接追加 `gen/app_localizations.dart` 后重跑，生成器把它恢复为 HEAD，`exit 0`——符合预期（drift 指"重新生成后与 HEAD 不同"，不是"手改过"）。
+- 早期 `01-drift-red-dirty.log` / `02-drift-green-clean*.log` 是旧口径（把 pub get 产物当硬门）的留档；**不作为最终证据**。
+
+CI 里该 step 失败会直接红，并带 `::error title=Generated-file drift::`；修复方式是重跑生成器并提交生成物，禁止手改。环境相关文件不得提交，提交前 `git status` 必须干净。
+
+### 8.3 Skip 审计
+
+完整分类、代码位置、golden 清单与闭合任务见 `reports/phase1-completion/skip-audit.md`。摘要：
+
+- app Phase 1 相关目录共 **9 个 `skip:` 点**：7 个 `live_ssh_test.dart` 测试 + 5 个 `workspace_live_test.dart` 测试（12 个环境门控，class A，T33 开启/T25 提供 sshd/live harness），2 个 `Platform.isWindows` 条件测试（class B，Linux/macOS 上实际执行）。
+- golden 排除：`verify.sh --full` 实际排除 **27** 个文件（13 个 `*_golden_test.dart` + 14 个含 `matchesGoldenFile` 的混合文件），**inventory 的 26 少算了** `test/remote/remote_golden_test.dart`（它用 `goldenBoth` 辅助函数，不出现字面量 `matchesGoldenFile`）。全部 class A，由 **T35a** 用平台 comparator + 基线真跑。
+- `RunnerTests/NativeToolsTests/testSystemTools` 的 `-skip-testing`（class A，**T35** 补权限或 verifier 批准的显式范围）；iSH archive 的 `--allow-skip`（class B，iSH 属 Phase 2，默认 `--full` 不再包含，只保留 opt-in `--guest`，**T35**）。
+- 目标：默认 `scripts/verify.sh --full` **skip=0 且不需要 `--allow-skip`**；`--real`/`--remote` 缺前置条件必须 FAIL。任何新 skip 必须进 `skip-audit.md` 并由 T38 复核。
+- 额外发现：`dart test` 的包级 live 测试还有 35 个 skipped case（`dsh_client` 31、`dsh_remote` 4），不在 inventory 范围内；已在审计 appendix A 标记为 class B，T35/T38 必须显式决定，不能以 `~N` 静默通过。
+
+### 8.4 iOS compile（`ios-compile.yml`）dispatch 计划
+
+现状（`T36/07-ios-compile-dispatch-readiness.log`）：
+
+- `ios-compile.yml` 只有 `workflow_dispatch:`，无 push/PR 触发；`compile` / `engine` job 保留，`phone-protocol` 与 iSH/guest/phone-runner steps 为 `if: false`（Phase 2）。
+- 本 worktree 分支 `phase1/c-ci` **未 push**；`origin` 只有 `phase1/base`，没有 `phase1/completion`；因此**本任务未执行 dispatch**，也没有修改签名/真机部分。
+- 最近 `ios-compile` run 都在 `feat/ios-foundation`（最近成功 `42546357246`）；`phase1/completion` 尚无 run。
+
+T41 在 `phase1/completion` 已 push 后执行（不要用当前未 push 的分支）：
+
+```bash
+# 前置检查
+gh auth status
+git ls-remote --exit-code --heads origin phase1/completion
+gh workflow view ios-compile.yml
+
+# 触发（唯一允许的方式；不带任何 secrets）
+gh workflow run ios-compile.yml --ref phase1/completion
+
+# 跟踪
+gh run list --workflow ios-compile.yml --branch phase1/completion --limit 1
+gh run watch <run-id> --exit-status
+```
+
+期望前置条件：
+
+- GitHub Actions 已启用，workflow 在默认分支可被 `workflow_dispatch` 发现；`phase1/completion` 已 push 到 `origin`（fork `m1ng-wym/dsh-Go`）。
+- runner `macos-26` 提供 `Xcode 26.6`（`DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer`）；Flutter 固定 `3.47.7` + macOS arm64 archive SHA256 `dd9da574c3168460550117eb0e8dd0313ae934fabf64a82a6d557fff5fd1422e`。
+- `engine` job 的 `tooling/ios/prepare-engine.sh` 可在 runner 上联网下载：Node 24.22.1（nodejs.org）、NodeMobile 24.22.1-0（GitHub release）、require-builtin addon（codeload）、runtime composition；需要 `python3 >= 3.11`、`curl`，并把 `runtime.zip`/`.ready` 生成到 `app/ios/Engine/`。
+- 无 secrets、无签名、无真机；`DSH_IOS_GUEST_BUILD=0`；iSH 步骤保持 `if: false`。
+- job 超时：`compile` 90 min、`engine` 120 min；concurrency `ios-compile-${{ github.ref }}` 会取消同 ref 的旧 run。
+
+T41 只看 `compile` 与 `engine`；`phone-protocol` 应显示 skipped（`if: false`，不是失败）。若 runner 镜像/Xcode/Flutter pin/engine 下载任一不满足，记录为基础设施阻塞，不改 workflow 的签名或真机步骤。
+
+### 8.5 T36 验证命令与证据
+
+```bash
+# YAML：PyYAML 可用时
+python3 - <<'PY'
+import yaml
+wf = yaml.safe_load(open('.github/workflows/phase1-verify.yml'))
+assert {'static', 'linux-fast-lane'} <= set(wf['jobs'])
+print('YAML OK:', sorted(wf['jobs']))
+PY
+file .github/workflows/phase1-verify.yml scripts/check-generated-drift.sh
+
+# drift：干净树必须 exit 0；临时 dirty fixture 必须 exit 1
+./scripts/check-generated-drift.sh
+
+# 本机 fast-lane 命令（macOS 把 DSH_TEST_FONT_DIR 指向仓库外装有
+# NotoSansCJK-{Light,Regular,Bold}.ttc 的目录；Linux CI 用 /usr/share/fonts/opentype/noto）
+(cd app && DSH_TEST_FONT_DIR="${DSH_TEST_FONT_DIR:?set to the Noto CJK directory}" \
+  flutter test --no-pub test/phase1 test/chat/phase1 test/engine/phase1 test/files/phase1)
+```
+
+证据：`T36/00-red-expectations.log`（扩展前红）、`T36/01-drift-red-dirty.log`（drift 红）、`T36/02-drift-green-clean.log`（干净树绿）、`T36/02b-drift-dirty-fixture.log` / `02c-drift-clean-fixture.log`（temp fixture 红/绿）、`T36/04-yaml-lint.log`、`T36/05-flutter-fast-lane-local.log`、`T36/06-dart-tests-local.log`、`T36/07-ios-compile-dispatch-readiness.log`。
+
+### 8.6 T36 改动文件
+
+- 改：`.github/workflows/phase1-verify.yml`（drift step + `linux-fast-lane` job + 触发 path；static/Node 保留）
+- 新增：`scripts/check-generated-drift.sh`（`+x`）
+- 改：`docs/specs/phase1/ci.md`（本节）
+- **不提交**环境相关文件：`app/analysis_options.yaml`、`app/pubspec.lock`、`packages/*/pubspec.lock`（Lead 复核后修正；提交它们会让 drift 门在干净树上红）
+- 未改：`scripts/verify.sh`（T35b）、其它 workflow、`docs/specs/**` 其它文件、签名/真机部分
+
+*T36 · 2026-11-12。*

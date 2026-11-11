@@ -1,10 +1,12 @@
-# Phase 1 implementation gate (T5).
+# Phase 1 implementation gate (T5; Linux fast lane and drift guard added by T36).
 #
-# Runs the same L0 checks as `scripts/verify.sh --static` on a Linux runner, plus the
-# Node unit tests (including the verify.sh self-test regression suite). The macOS-only
-# gates — Flutter/Runner builds, RunnerTests, engine smoke, archive check — live in
-# ios-compile.yml, which is also triggered on `phase1/**`; they are not duplicated here.
-# No secrets, no signing, no real accounts, no device.
+# `static` runs the L0 checks of `scripts/verify.sh --static`, the generated-file
+# drift guard, and the Node unit tests (including the verify.sh self-test suite).
+# `linux-fast-lane` runs the Phase 1 Flutter suites with a real CJK font and the
+# `dsh_client` / `dsh_remote` Dart suites, so widget geometry/glyphs do not depend
+# on the developer's macOS font setup. The macOS-only gates — Flutter/Runner
+# builds, RunnerTests, engine smoke, archive check — live in ios-compile.yml and
+# are not duplicated here. No secrets, no signing, no real accounts, no device.
 name: Phase 1 verify
 
 on:
@@ -17,6 +19,7 @@ on:
       - 'tooling/**'
       - 'docs/specs/phase1/**'
       - 'scripts/verify.sh'
+      - 'scripts/check-generated-drift.sh'
       - 'test/**'
       - '.github/workflows/phase1-verify.yml'
   pull_request:
@@ -28,6 +31,7 @@ on:
       - 'tooling/**'
       - 'docs/specs/phase1/**'
       - 'scripts/verify.sh'
+      - 'scripts/check-generated-drift.sh'
       - 'test/**'
       - '.github/workflows/phase1-verify.yml'
   workflow_dispatch:
@@ -86,8 +90,72 @@ jobs:
             (cd "$(dirname "$p")" && dart pub get)
           done
 
+      - name: Generated-file drift (l10n regeneration must not change tracked files)
+        timeout-minutes: 10
+        run: ./scripts/check-generated-drift.sh
+
       - name: verify.sh --static (fail-on-skip; no silent green)
         run: ./scripts/verify.sh --static
 
       - name: Node tests + verify.sh self-test
         run: node --test test/unit/*.test.mjs
+
+  linux-fast-lane:
+    # Linux counterpart of the macOS-only Flutter gates: the Phase 1 suites run
+    # with a real CJK font so widget goldens/geometry do not silently fall back
+    # to the test engine's box font. Packages stay separate so a failure names
+    # the package. No secrets, no signing, no device, no Xcode.
+    name: Linux Phase 1 fast lane (CJK font)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DSH_TEST_FONT_DIR: /usr/share/fonts/opentype/noto
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Flutter (pinned)
+        run: |
+          archive="flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" \
+            "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/$archive"
+          echo "$FLUTTER_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Install the CJK test fonts
+        run: |
+          sudo apt-get update
+          # fonts-noto-cjk brings Regular/Bold; the Light face the widget tests
+          # load lives in fonts-noto-cjk-extra (test/support/test_fonts.dart).
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-cjk-extra
+          fc-cache -f >/dev/null
+          for face in Light Regular Bold; do
+            font="$DSH_TEST_FONT_DIR/NotoSansCJK-$face.ttc"
+            test -f "$font" || { echo "::error title=CJK font::missing $font"; exit 1; }
+          done
+          fc-list :lang=zh | head -n 5
+
+      - name: Resolve dependencies
+        run: |
+          (cd app && flutter pub get)
+          for p in packages/*/pubspec.yaml; do
+            (cd "$(dirname "$p")" && dart pub get)
+          done
+
+      - name: Phase 1 Flutter suites (test/phase1, test/chat/phase1, test/engine/phase1, test/files/phase1)
+        timeout-minutes: 15
+        working-directory: app
+        run: flutter test --no-pub test/phase1 test/chat/phase1 test/engine/phase1 test/files/phase1
+
+      - name: Dart package suites (dsh_client, dsh_remote)
+        timeout-minutes: 15
+        run: |
+          for p in packages/dsh_client packages/dsh_remote; do
+            (cd "$p" && dart test)
+          done
