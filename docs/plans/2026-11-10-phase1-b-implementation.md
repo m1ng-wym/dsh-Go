@@ -2,7 +2,7 @@
 
 > 批准时间：2026-11-10；批准形式：用户确认计划内容并落盘。
 > 仓库版落盘：2026-11-11（T23）；内容 = 工作区计划 + T22/T23 事实更新。**本文件是 Phase 1 的唯一执行依据**；变更需 Lead 更新并记录原因。
-> 执行进度（2026-11-11 14:45）：**Wave 0–4 全部完成（T1–T21）**；**T22 自动化门与验收自动化完成**（`--fast` 13/0/0；`--full` 曾 pass=21/0/1；E2E 17 Pro + SE3 PASS；RunnerTests 366/366）；**T22b 验收自动化 14 项 PASS（13 项 acceptance 测试 + E2E 的 B4），C7/C8 因 full-access profile 不可达 deferred，27 项 L5**；**T23 交付文档完成，最终 `--full` 重跑 pass=21/0/1（仅 iSH guest skip）**。证据在 `DSH-Go-iOS/reports/`，汇总见 `docs/specs/phase1/acceptance-report.md`。
+> 执行进度（2026-11-11 14:45）：**Wave 0–4 全部完成（T1–T21）**；**T22 自动化门与验收自动化完成**（`--fast` 13/0/0；`--full` 曾 pass=21/0/1；E2E 17 Pro + SE3 PASS；RunnerTests 366/366）；**T22b 验收自动化 14 项 PASS（13 项 acceptance 测试 + E2E 的 B4），C7/C8 因 full-access profile 不可达 deferred，27 项 L5**；**T23 交付文档完成，最终 `--full` 重跑 pass=21/0/1（仅 iSH guest skip）；6 分钟演示录屏已产出（`reports/phase1/demo-6min.mp4`，5m15s）**。证据在 `DSH-Go-iOS/reports/`，汇总见 `docs/specs/phase1/acceptance-report.md`。
 > 仓库：`DSH-Go-iOS/repo`，分支 `phase1/base`，基线 `56111af8`（+T22b 未提交测试改动）。
 > 工作区：`/Users/Zhuanz/Documents/Zenlix/DSH-Go-iOS`；研究底稿在 `DSH-Go-iOS/research/`（可行性报告、能力清单 94 条、分支对齐与复用分析、CI/测试复用方案）。
 
@@ -220,7 +220,7 @@ D5 手机操控全部；D7 桌宠/伙伴/Live2D；D8 插件市场/插件 UI；D4
 
 - [x] **T22 全量验证**（DONE 2026-11-11；证据 `reports/T22/` + `reports/phase1/acceptance-run/`）：`scripts/verify.sh --fast` = **pass=13 fail=0 skip=0**；`--full` = **pass=21 fail=0 skip=1**（唯一 skip 为 iSH guest archive，`--allow-skip` 显式放行；commit `ebeb1b9a`）；E2E **iPhone 17 Pro + SE3 均 PASS**（6 个递增流式前缀）；RunnerTests **366/366 passed（D6 `testSystemTools` 过滤）**；engine smoke PASS。R3 引擎 stop 崩溃修复 `56111af8`，T22b 已把 stop/restart 加回 E2E（stop 509ms / restart 2675ms）。
   - 最终结果：R3 + T22b 未提交测试改动后的 `--full` 2026-11-11 14:30–14:45 重跑 = **pass=21 fail=0 skip=1**（仅 iSH guest archive，`--allow-skip` 放行）；E2E 17 Pro（stop 501ms/restart 3367ms）与 SE3（stop 741ms/restart 2930ms）均 PASS；guest fixture 5/5。T22b 首跑 18/3/1 已留证，未冒充最终绿。
-- [x] **T23 交付文档**（DONE 2026-11-11 14:35）：`docs/specs/phase1/acceptance-report.md`（环境/门禁/24 ID·69 AC/25 项验收/修复/deferred/证据/待回填字段）、`docs/specs/phase1/phase2-backlog.md`（§9 + 18 项技术债）、本计划仓库版、`docs/specs/phase1/README.md` 状态更新。**6 分钟演示录屏未产出**，已列入 `phase2-backlog.md` D-18，不冒充完成。
+- [x] **T23 交付文档**（DONE 2026-11-11 14:35）：`docs/specs/phase1/acceptance-report.md`（环境/门禁/24 ID·69 AC/25 项验收/修复/deferred/证据/待回填字段）、`docs/specs/phase1/phase2-backlog.md`（§9 + 18 项技术债）、本计划仓库版、`docs/specs/phase1/README.md` 状态更新。**6 分钟演示录屏已产出**：`reports/phase1/demo-6min.mp4`（5m15s / 47.5MB；三段真实模拟器录制：17 Pro E2E、17 Pro acceptance、SE3 E2E，ffmpeg 拼接+标题卡；说明 `reports/phase1/demo-6min.md`）。
 
 ---
 

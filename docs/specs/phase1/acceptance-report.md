@@ -183,7 +183,8 @@
 | T22b | `reports/T22/T22b-report.md` §7 |
 | 任务证据 | `reports/wave1/*.md`、`reports/wave2/*.md`；T1–T6 报告与 `reports/env/t3-build-spike.md` |
 | 规格/追溯 | `docs/specs/phase1/{capability-spec,traceability,verification-baseline,acceptance-checklist,ci,test-plan,mocks,design}.md` |
-| CI | GitHub Actions `m1ng-wym/dsh-Go` → `Phase 1 verify`：42966279010（最新 success）等 |
+| CI | GitHub Actions `m1ng-wym/dsh-Go` → `Phase 1 verify`：[42975387409](https://github.com/m1ng-wym/dsh-Go/actions/runs/42975387409)（c3070795 最终 success）；R3 修复 run 42966279010 亦 success |
+| 演示录屏 | `reports/phase1/demo-6min.mp4`（5m15s / 47.5MB，H.264；素材 `reports/phase1/raw/`、说明 `reports/phase1/demo-6min.md`） |
 | 计划 | `docs/plans/2026-11-10-phase1-b-implementation.md` |
 
 ---
@@ -195,7 +196,7 @@
 3. **C7/C8**：不是产品缺陷，而是引擎 profile 默认 `danger-full-access` 导致审批卡不可达；`acceptance-results.md` §3 已给证据。Phase 2 需 `approval: ask` 测试 profile。
 4. **T22b `--full` 首跑红 → 最终绿**：首跑 `t22b-verify-full.log` 为 **pass=18 fail=3 skip=1**（guest-embedding fixture 2 失败 + 2 errors，原因是 `DSH_IOS_GUEST_BUILD=0` 泄漏；E2E 17 Pro/SE3 各 1 次时序 flake）。修正后最终 `t22b-verify-full-rerun.log` = **pass=21 fail=0 skip=1**，E2E 两机型均 PASS，guest fixture `Ran 5 tests` 通过。首跑红保留，不冒充最终结果。
 5. **环境变量**：`DSH_IOS_GUEST_BUILD=0` 只用于 App 构建/E2E，不应传给官方 guest-embedding fixture；T22b 首跑已踩坑，复跑脚本需隔离。
-6. **工作树**：`acceptance-report.md`/`phase2-backlog.md`/`docs/plans/**` 为本次新增，未提交；T22b 测试改动仍属未提交状态，符合“不 commit”约束。
+6. **工作树/提交**：本报告与 `phase2-backlog.md`、`docs/plans/**`、T22b 测试改动已由 Lead 提交为 `c3070795`（并 push；CI 全绿）；演示录屏是 workspace 交付物（`reports/phase1/demo-6min.mp4`），不进 repo。
 
 ---
 
@@ -214,7 +215,7 @@
 | `FINAL_RERUN_GUEST_FIXTURE` | **PASS**：`Ran 5 tests`（首跑 4 失败消失） |
 | `FINAL_RERUN_RUNNERTESTS` | **TEST SUCCEEDED**：日志 365 passed / 0 failed；R3 专项 xcresult 366/366 |
 | `FINAL_RERUN_ENGINE_SMOKE` | **PASS**：ready 2638ms / restart 2111ms / approvals 8 |
-| `FINAL_RERUN_CI_RUN` | **N/A**：文档未提交，无新 `Phase 1 verify` run；提交后回填 |
+| `FINAL_RERUN_CI_RUN` | **success**：`Phase 1 verify` run [42975387409](https://github.com/m1ng-wym/dsh-Go/actions/runs/42975387409)（commit `c3070795`，2m58s 全绿） |
 | `FINAL_RERUN_DATE` | 2026-11-11（Asia/Shanghai） |
 
 **判定**：除 iSH guest archive 外无 skip、无 FAIL，Phase 1 自动化门按计划 §7.1 视为**通过**。遗留的“L4 未逐条重放”仍是 §3.1 所述证据边界，不因本轮门禁全绿而消失。

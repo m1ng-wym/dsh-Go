@@ -46,7 +46,7 @@
 | D-15 | **T22b C4/C5/C9/C10/C11** | 插话/排队/工具行/消息操作/提问卡未上 L4；C11 mock 不产生引擎级提问 | 扩 mock + fake host；按 acceptance-report §4 逐项转 PASS | 中 |
 | D-16 | **T22b 测试脚手架** | `flutter test` 结束卸载 App，无法进程级 terminate/relaunch；截图写 App 容器被清 | 改用 `simctl` 外部驱动 + 截图到宿主机；或 XCUITest | 中 |
 | D-17 | **生成物污染** | `flutter pub get/build/verify --fast` 会改 `app/analysis_options.yaml`、`packages/dsh_remote/pubspec.lock` | 提交前还原；CI 加 `git diff --exit-code` 检查（需 Lead 决定） | 低 |
-| D-18 | **T23 演示录屏** | 计划 §7.4 要求 6 分钟演示录屏；本报告未包含视频文件 | 按 acceptance-report §4 的 PASS 项录制；C7/C8 用 L2 或后续 ask profile 补 | 中 |
+| D-18 | **T23 演示录屏**（已完成） | `reports/phase1/demo-6min.mp4`（5m15s / 47.5MB，H.264；17 Pro E2E + 17 Pro acceptance + SE3 E2E 三段真实模拟器画面，ffmpeg 拼接与标题卡）；说明见 `reports/phase1/demo-6min.md` | 后续可用 `approval: ask` profile 补录 C7/C8 审批画面 | 已交付 |
 
 ### 2.2 已关闭（留档，不重复做）
 
