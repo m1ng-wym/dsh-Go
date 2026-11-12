@@ -1,7 +1,7 @@
 # Phase 1 v1.1 验收报告（acceptance-report v2）
 
 > 生成：2026-11-13 · 分支 `phase1/completion` · 基线 `phase1/base`
-> 结论：**本报告如实区分 PASS / FAIL / 未执行**。T32（真实对话控制）与 T34b（进程级 UI 流程）未闭合，
+> 结论：**本报告如实区分 PASS / FAIL / 未执行**。T32 已闭合；T34b 七条流程 PASS、**D6/D8（Photos 附件）因真实产品缺陷 FAIL**，
 > 因此 **不宣称 Phase 1 v1.1 全部 DoD 达成，也不创建 `phase1-v1.1` tag**。
 > 全部 PASS 行都给出可重跑命令与证据路径；未执行项不写成 PASS。
 
@@ -23,16 +23,18 @@
 | 12 | T6 指标（冷启动/引擎启动/RSS/SE3 生命周期；20× 复测） | `T35a/report.md` §5/§8；`T35a/metrics/` | 17 Pro + SE3 |
 | 13 | `verify.sh` 默认 `--full` 无 skip；`--real/--remote/--guest` 模式；自测 17 项 | T35b `scripts/verify.sh`；`--self-test` PASS | L0/L3 |
 | 14 | 真实演示录屏（短任务/工作区/审批/SSH/DSH Remote，真实模型，无慢放） | `reports/phase1-completion/video/out/demo-phase1-v1.1.mp4` + `.md` + SHA | 17 Pro |
+| 15 | T32 真实对话控制 C4/C5/C6/C9/C10/C11 | commit `b6bdddcf`；`T32/green/chat_features_real.log`（`ALL FEATURES PASSED in 222s`，22 次请求） + 5 张截图 | T32 clone（同型号 17 Pro） |
+| 16 | T34b 进程级 UI：冷启动/自动启动/续装/失败诊断/日志/深色/英文/SE3 | commit `1b1bdcaf`；`T34b/{green,red,screenshots}` + `report.md` | T34b clone + SE3 |
 
 ## 2. 未通过 / 未执行（FAIL / NOT-RUN）
 
 | # | 项 | 现状 | 证据 / 缺口 |
 |---|---|---|---|
-| F1 | T32 C4/C5/C6/C9/C10/C11 最终 PASS 日志 | **FAIL（未闭合）** | 真实运行多次到达 C4 steer / C5 queue / C6 stop / C9 tool row / C10 copy+quote / C11 提问卡，但每轮都在后续 UI 断言（重答按钮、finder 时序）失败；源码与 wrapper 仍在 `.worktrees/completion/chatreal`，未提交、无最终 PASS 日志。矩阵 6 步 + 8 AC 保持 `PENDING-T32`。 |
-| F2 | T34b 进程级 UI 流程（B2 续装、B6 失败诊断、B7 日志页、D6/D8 Photos、G1/G2 深色/英文、SE3） | **FAIL（未闭合）** | `Phase1UITests` 仅 T34a 2/2 骨架 PASS；`run_ui_process.sh`/新增用例未提交；冷启动/自动启动由 T30 进程级证据覆盖（PASS-with-caveat），其余流程无最终 PASS。矩阵 8 步 + 3 AC 保持 `PENDING-T34b`。 |
+| F1 | T32 对话控制 | **已关闭（PASS）** | commit `b6bdddcf`；`T32/green/chat_features_real.log` `ALL FEATURES PASSED in 222s`；矩阵 6 步 + 8 AC 已翻 PASS。 |
+| F2 | T34b Photos 附件 D6/D8 | **FAIL（真实产品缺陷）** | 七条流程 PASS（A2/B5、B2、B6、B7、G1、G2、SE3）；模型弹层选择不关闭已修复（`model_sheet.dart`，commit `49468ccd`），但 attach `+` 按钮被宠物层覆盖，面板无法打开：`The Photos entry is missing from the attach panel`（`T34b/green/photos-d6-fix/xcodebuild.log`）。D6/D8 与 AC `D4-07-AC1` FAIL；未改断言/未 mock。 |
 | F3 | `verify.sh --real` 端到端全绿 | **NOT-RUN** | `--real` 数据驱动列出 6 个 L4 wrapper；`run_chat_features_real.sh` 因 T32 未合并而缺失，按设计 fail-closed（fail=1, skip=0），不能称为全绿。 |
 | F4 | `verify.sh --remote` 端到端全绿 | **NOT-RUN（组件已 PASS）** | SSH/Remote 两个 wrapper 已合并且各自 PASS，但整组 `--remote` 门禁未在最终树上执行。 |
-| F5 | `verify.sh --full` 最终树全绿 | **RUNNING** | `reports/phase1-completion/T38/02-full.log`；含 L3/L4、goldens、Phase1UITests、RunnerTests 串行。结果以该日志为准，失败则如实记 FAIL。 |
+| F5 | `verify.sh --full` 最终树全绿 | **FAIL** | 修复前最终树跑过一次：`pass=22 fail=1 skip=0`（裸跑 Phase1UITests；T34b dark/SE3 需要 wrapper 逐流程准备）。已把 full 门改为 T34a smoke + T34b wrapper（commit `009301f6`）；因 D6/D8 真实失败，修复前不会全绿。日志 `T38/02-full.log`。 |
 | F6 | CI（GitHub Actions）绿灯 | **NOT-RUN（需 push）** | 流程文件已合并；本地无 CI 结果，未 push 到 origin。 |
 | F7 | `phase1-v1.1` tag / fork push | **BLOCKED** | 因 F1/F2 未闭合，不创建最终 tag；不伪造完成状态。 |
 
@@ -49,5 +51,5 @@
 ## 5. 结论与下一步
 
 Phase 1 的核心基座（真实本机引擎 + 对话闭环 + 工作区 + 真实审批 + 进程级持久化 + 真实 SSH / DSH Remote + 27 golden / 367 RunnerTests / 录屏）已经打通并有真实证据；
-**T32/T34b 两个验收面尚未闭合**，因此本报告不签署“Phase 1 v1.1 全部达标”。
-下一步：在 `.worktrees/completion/chatreal` 完成 C10/C11 的最终 PASS 并提交（或降级为已知测试缺陷并修订 spec），在 `.worktrees/completion/ui` 完成 T34b 至少 B6/B7/D6/G1/G2 的可复现 PASS；随后重跑 `--full/--real/--remote`，全绿后再合并 `phase1/base` 并打 `phase1-v1.1` tag。
+**T32 已闭合；T34b 七条流程通过，D6/D8（Photos 附件）因真实产品缺陷（宠物层遮挡 attach 按钮）FAIL**，因此本报告不签署“Phase 1 v1.1 全部达标”。
+下一步：修复宠物层对 composer/attach 面板的点击遮挡（真实产品修复 + 回归），重跑 T34b `photos` 流程；随后重跑 `--full/--real/--remote`，全绿后再合并 `phase1/base` 并打 `phase1-v1.1` tag。

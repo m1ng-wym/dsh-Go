@@ -136,16 +136,16 @@ M0（T24/T25）→ M1（T26–T29）→ M2（T30–T33）→ M3（T34–T36）�
 | T29 事务/回退 | DONE | `T29` |
 | T30 进程级持久化 | DONE | `T30/run-strong-final.log` 5/5 PASS 591s + mid-turn crash |
 | T31 工作区/文件页 | DONE | `T31/green/workspace_real.log` |
-| T32 对话控制 C4/C5/C6/C9–C11 | **OPEN（FAIL）** | 多轮到达 steer/queue/stop/tool/copy/quote/question，最终断言未绿；源码未提交 |
+| T32 对话控制 C4/C5/C6/C9–C11 | DONE | commit `b6bdddcf`；`T32/green/chat_features_real.log` `ALL FEATURES PASSED in 222s` |
 | T33a 真实 DSH Remote | DONE | `T33b-relay/green/02-flutter-test.log` |
 | T33b 真实 SSH | DONE | `T33b-ssh/green/flutter-test.log`；真实 sshd |
 | T34a Phase1UITests target | DONE | `T34a` 2/2 PASS |
-| T34b 进程级 UI 流程 | **OPEN（FAIL）** | 仅 T34a 骨架；B6/B7/D6/D8/G1/G2 未产出可复现 PASS |
+| T34b 进程级 UI 流程 | **PARTIAL（D6/D8 FAIL）** | commit `1b1bdcaf`；A2/B5、B2、B6、B7、G1、G2、SE3 PASS；D6/D8 被宠物层遮挡 attach 按钮阻塞 |
 | T35a goldens/RunnerTests/T6 | DONE | `T35a/report.md`；27 golden、367/367 |
 | T35b verify.sh 新模式 | DONE | `T35b`；`--self-test` 17/17 |
 | T36 CI/skip audit | DONE（Linux 流程文件） | `T36`；CI 尚未在远端跑绿 |
 | T37 matrix/traceability | DONE | `T37`；70 AC / 44 步 |
-| T38 独立 verifier | DONE（发现 1 个门禁缺陷并修复） | `reports/phase1-completion/T38/report.md` |
-| T39 acceptance/tag | PARTIAL | `acceptance-report.md` v2；因 T32/T34b 未闭合不 tag |
+| T38 独立 verifier | DONE（发现 1 个门禁缺陷 + 关闭 T32；D6/D8 记 FAIL） | `reports/phase1-completion/T38/report.md`；matrix §5 |
+| T39 acceptance/tag | PARTIAL | `acceptance-report.md` v2；因 D6/D8 FAIL 不 tag |
 | T40 演示录屏 | DONE | `reports/phase1-completion/video/out/demo-phase1-v1.1.mp4` |
-| T41 最终门禁 | PARTIAL | `--static` 7/0/0、`--fast` 13/0/0、`--full` 进行中；`--real` 缺 T32 wrapper fail-closed |
+| T41 最终门禁 | PARTIAL | `--static` 7/0/0、`--fast` 13/0/0；`--full` 修复前 22/1/0（裸 UI suite），已改为 wrapper；D6/D8 FAIL 使 full 不可能全绿；`--real/--remote` 整组未执行 |
