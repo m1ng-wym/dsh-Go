@@ -463,7 +463,20 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
       _selection = next;
       _channel = model.provider;
     });
-    if (!widget.confirmSelection) widget.onSelected(next);
+    if (!widget.confirmSelection) {
+      widget.onSelected(next);
+      // A model without thinking levels is a complete choice: close once the
+      // card's press animation lands so the composer/attach row is usable
+      // again. A model with efforts keeps the sheet open for the effort pick,
+      // which closes it after the thumb lands.
+      if (model.efforts.isEmpty) {
+        _close?.cancel();
+        final settle = AppMotion.reduced(context) ? Duration.zero : AppMotion.standard + const Duration(milliseconds: 120);
+        _close = Timer(settle, () {
+          if (mounted) Navigator.of(context).maybePop();
+        });
+      }
+    }
   }
 
   void _pickEffort(String effort) {

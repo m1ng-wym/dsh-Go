@@ -152,6 +152,26 @@ ModelSelection? _picked(WidgetTester tester, ChatHarness harness) {
 }
 
 void main() {
+
+  testWidgets('picking a model closes the sheet so the conversation is usable again', (tester) async {
+    final harness = _harness(multiCatalog);
+    await _openSheet(tester, harness);
+    await tester.tap(find.text('OpenRouter'));
+    await pumpFrames(tester, 4);
+
+    // Kimi-K2 has no thinking levels: picking it is a complete decision.
+    final card = find.text('Kimi K2');
+    await tester.tap(card);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    // The selection reached the conversation…
+    expect(_picked(tester, harness)?.model, 'moonshotai/kimi-k2');
+    // …and the modal is gone: the composer/attach row must be reachable.
+    expect(find.text('选择模型'), findsNothing, reason: 'the model sheet stayed open after a selection');
+  });
+
+
   setUpAll(() async {
     await loadTestFonts();
     await WhaleSprites.load();
@@ -255,9 +275,16 @@ void main() {
       final picked = _picked(tester, harness)!;
       expect(picked.model, 'moonshotai/kimi-k2');
       expect(picked.reasoningEffort, isNull);
-      expect(find.text('思考深度'), findsNothing);
+      // A model with no efforts is a complete choice: the sheet closes.
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pumpAndSettle();
+      expect(find.text('选择模型'), findsNothing);
 
-      // Back to a model with efforts: its default comes in.
+      // Back to a model with efforts: reopen, its default comes in.
+      await tester.tap(find.byKey(const ValueKey('composer-model')));
+      await pumpFrames(tester, 8);
+      await tester.tap(find.text('OpenRouter'));
+      await pumpFrames(tester, 4);
       await tester.tap(find.text('GLM 4.6'));
       await pumpFrames(tester, 6);
       expect(find.text('思考深度'), findsOneWidget);
