@@ -459,7 +459,10 @@ final class Phase1UITests: XCTestCase {
 
   private func isHome(_ app: XCUIApplication) -> Bool {
     if hasLabel(["Chats", "对话列表"], app) { return true }
-    return buttonContaining(["Add image or file", "添加图片或文件"], app) != nil
+    if buttonContaining(["Add image or file", "添加图片或文件"], app) != nil { return true }
+    // The composer is the stable home affordance on the chat page; the attach
+    // button can be briefly rebuilt while the model sheet closes.
+    return textFieldLabel(["Message DSH…", "给 DSH 发消息…"], app) != nil
   }
 
   @discardableResult
