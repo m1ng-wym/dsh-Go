@@ -451,13 +451,16 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
     final view = ref.read(modelListViewProvider);
     if (!_active || view.readOnly) return;
     final available = findModel(view.value, ModelSelection(provider: model.provider, model: model.id));
-    if (available == null || !identical(available, model)) return;
+    // The catalog can refresh while the sheet is open, replacing every model
+    // instance; a card captured from the previous snapshot must still select
+    // the same provider/id instead of being a silent no-op.
+    if (available == null) return;
     final keep = _selection?.reasoningEffort;
-    final supported = model.efforts.any((e) => e.id == keep);
+    final supported = available.efforts.any((e) => e.id == keep);
     final next = ModelSelection(
-      provider: model.provider,
-      model: model.id,
-      reasoningEffort: supported ? keep : startingEffort(model),
+      provider: available.provider,
+      model: available.id,
+      reasoningEffort: supported ? keep : startingEffort(available),
     );
     setState(() {
       _selection = next;
