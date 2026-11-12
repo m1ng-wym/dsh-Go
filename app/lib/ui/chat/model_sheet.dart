@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
 import '../../state/models_state.dart';
+import '../../state/read_list_cache.dart';
 import '../../state/settings_state.dart';
 import '../common/app_sheet.dart';
 import '../common/empty_view.dart';
@@ -441,6 +442,10 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
   /// Closes the sheet once the effort thumb has landed.
   Timer? _close;
 
+  /// A model tapped while the catalog is still refreshing. It is applied as
+  /// soon as the current snapshot arrives instead of being a silent no-op.
+  ModelInfo? _queued;
+
   @override
   void dispose() {
     _close?.cancel();
@@ -448,8 +453,38 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
   }
 
   void _pickModel(ModelInfo model) {
+    if (!_active) {
+      // The picker belongs to a previous connection generation; close it
+      // instead of silently swallowing the tap.
+      Navigator.of(context).maybePop();
+      return;
+    }
     final view = ref.read(modelListViewProvider);
-    if (!_active || view.readOnly) return;
+    if (view.readOnly) {
+      // Stale catalog: show the pick immediately and apply it once the current
+      // snapshot lands (the sheet watches the provider in build).
+      setState(() {
+        _selection = ModelSelection(
+          provider: model.provider,
+          model: model.id,
+          reasoningEffort: _selection?.reasoningEffort,
+        );
+      });
+      _queued = model;
+      return;
+    }
+    _pickModelReady(view, model);
+  }
+
+  void _applyQueued(ReadListView<ModelCatalog> view) {
+    final model = _queued;
+    if (model == null) return;
+    _queued = null;
+    _pickModelReady(view, model);
+  }
+
+  void _pickModelReady(ReadListView<ModelCatalog> view, ModelInfo model) {
+    if (view.readOnly) return;
     final available = findModel(view.value, ModelSelection(provider: model.provider, model: model.id));
     // The catalog can refresh while the sheet is open, replacing every model
     // instance; a card captured from the previous snapshot must still select
@@ -472,7 +507,7 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
       // card's press animation lands so the composer/attach row is usable
       // again. A model with efforts keeps the sheet open for the effort pick,
       // which closes it after the thumb lands.
-      if (model.efforts.isEmpty) {
+      if (available.efforts.isEmpty) {
         _close?.cancel();
         final settle = AppMotion.reduced(context) ? Duration.zero : AppMotion.standard + const Duration(milliseconds: 120);
         _close = Timer(settle, () {
@@ -505,6 +540,13 @@ class _ModelSheetState extends ConsumerState<_ModelSheet> {
     final l10n = context.l10n;
     final catalogAsync = ref.watch(modelCatalogProvider);
     final view = ref.watch(modelListViewProvider);
+    if (_queued != null && !view.readOnly) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final current = ref.read(modelListViewProvider);
+        if (!current.readOnly) _applyQueued(current);
+      });
+    }
     final catalog = view.value;
     final active = identical(_scope, ref.watch(modelSelectionScopeProvider));
 
