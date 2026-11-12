@@ -644,8 +644,12 @@ fi
 if mode_in ci fast full || [ "$MODE" = "list" ]; then
   # Official cheap gates from ios-compile.yml (no Xcode needed except host-core.py --ios
   # is a python compiler probe; it does not link against Xcode).
+  # The fixture must run with the guest build enabled: this repo's local iOS
+  # runs export DSH_IOS_GUEST_BUILD=0 (Phase 1 takes the no-guest path), and
+  # leaking that into the official fixture makes its two compile-failure cases
+  # pass the prepare phase unexpectedly.
   run_step ci "official: guest-embedding fixture" "tooling/ios/test-guest-embedding.py" \
-    'python3 -B tooling/ios/test-guest-embedding.py -v'
+    'DSH_IOS_GUEST_BUILD=1 python3 -B tooling/ios/test-guest-embedding.py -v'
   run_step ci "official: native loader checks" "tooling/ios/test-native-loader.py" \
     'python3 -B tooling/ios/test-native-loader.py -v'
   run_step ci "official: host-core iOS/HAP generation" "runtime/tests/ohos/host-core.py" \
