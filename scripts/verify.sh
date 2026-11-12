@@ -516,10 +516,17 @@ run_self_test() {
   fi
 
   # 15) --guest runs check-archive.sh when the guest build is present.
+  # The fixture path is a stub archive check, but the mode's prerequisites
+  # intentionally require the macOS toolchain; stub them so this self-test
+  # also proves the pass path on Linux CI.
   mkdir -p "$tmp/repo/app/ios/Engine/build/iphoneos/guest/DshGuest.framework" \
-    "$tmp/repo/app/ios/Engine/build/iphoneos/guest/DshGuestBridge.framework"
+    "$tmp/repo/app/ios/Engine/build/iphoneos/guest/DshGuestBridge.framework" "$tmp/bin"
+  for tool in xcodebuild flutter; do
+    printf '#!/bin/sh\nexit 0\n' > "$tmp/bin/$tool"
+    chmod +x "$tmp/bin/$tool"
+  done
   rm -f "$tmp/repo/ran-guest.log"
-  if env -i PATH="$restricted" HOME="$HOME" DSH_VERIFY_EVIDENCE_DIR="$tmp/evidence-guest" \
+  if env -i PATH="$tmp/bin:$restricted" HOME="$HOME" DSH_VERIFY_EVIDENCE_DIR="$tmp/evidence-guest" \
        VERIFY_SELFTEST=1 bash "$tmp/repo/scripts/verify.sh" --guest > "$tmp/guest-green.out" 2>&1; then
     guest_ran="$(wc -l < "$tmp/repo/ran-guest.log" 2>/dev/null | tr -d ' ')"
     guest_logs="$(find "$tmp/evidence-guest" -name '*.log' 2>/dev/null | wc -l | tr -d ' ')"
