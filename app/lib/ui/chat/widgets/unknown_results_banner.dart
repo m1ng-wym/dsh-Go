@@ -24,9 +24,30 @@ class UnknownResultsBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // A turn can end with a call unaccounted for, with no reconnection to prompt a read.
-    ref.listen(chatProvider(sessionId).select((chat) => chat.running), (was, now) {
-      if (was == true && !now) ref.invalidate(unknownResultsProvider(sessionId));
-    });
+    //
+    // A cold launch needs more than the running -> idle edge: the engine reconciles
+    // the interrupted call while the session transcript loads, so the first lifecycle
+    // read can precede the result-unknown state. Re-read when the session settles
+    // (loading/syncing -> idle) and whenever the durable transcript grows; the
+    // recovery appends the unknown tool result as a new item.
+    ref.listen(
+      chatProvider(sessionId).select(
+        (chat) => (
+          loading: chat.loading,
+          syncing: chat.syncing || chat.resyncing,
+          running: chat.running,
+          items: chat.items.length,
+        ),
+      ),
+      (previous, next) {
+        if (previous == null) return;
+        final wasBusy = previous.loading || previous.syncing || previous.running;
+        final isIdle = !next.loading && !next.syncing && !next.running;
+        if ((wasBusy && isIdle) || previous.items != next.items) {
+          ref.invalidate(unknownResultsProvider(sessionId));
+        }
+      },
+    );
     final state = ref.watch(unknownResultsProvider(sessionId)).value;
     if (state == null || (!state.pending && !state.blocked)) return const SizedBox.shrink();
     final l10n = context.l10n;
