@@ -1,154 +1,182 @@
 # Phase 1 v1.1 收口验收矩阵（completion-matrix.md）
 
-> 状态：**SKELETON**（T24 建立，T37 填实）。规则：每行必须有实际命令、日志/截图路径、模拟器与构建 SHA；`PENDING`/`L4→T22`/`DEFERRED` 在本文件最终版中不允许出现。
-> 生成口径：44 个模拟器验收步骤（A–G）+ 70 条 AC（69 + D2-03-AC4）。真实层使用 `--real`（opencode-go `deepseek-v4.1-flash`）与 `--remote`（临时 sshd + 自托管 DSH Remote）。
+> 状态：**FILLED（T37，2026-11-13）**。44 个模拟器验收步骤（A–G）+ 70 条 AC 逐行填实。
+> 规则：每行必须有实际命令、日志/截图路径、模拟器与构建 SHA；状态只用 `PASS` / `FAIL` / `PENDING-<task>` / `Phase-1-out`。本文件无裸 `PENDING`/`DEFERRED`。
+> 证据根：`/Users/Zhuanz/Documents/Zenlix/DSH-Go-iOS/reports/phase1-completion/`（T24–T36 证据；T25/T27/T30/T31/T33b/T35a/T35b 为主要真实层来源）。真实模型：opencode-go `deepseek-v4.1-flash`；真实 SSH：临时非特权 sshd `127.0.0.1:22422`；真实 Remote：自托管 relaying stack（upstream `7e387df`）。
+> 设备图例：`17Pro 1D9F` = iPhone 17 Pro `1D9F8C91-5739-47B2-BDD0-0FC7207166F3`；`17Pro 5DBB` = iPhone 17 Pro `5DBBD04A-9EEB-460A-8574-2193271D5610`；`17Pro BB0C` = 私有 iPhone 17 Pro `BB0C8CB8-77CA-4616-B1DD-E7591565F8B5`；`17Pro DAFD` = iPhone 17 Pro `DAFDCC52-C2ED-4240-9620-83C87262247D`；`SE3 8A82` = iPhone SE3 `8A82B667-86B3-4EC7-85DC-E454E846651D`；`SE3 D9C6` = iPhone SE3 `D9C6C518-0452-4AFE-9F8C-59EBE495BD47`；`HOST` = macOS host（Flutter/Dart 测试，无模拟器）。全部 iOS 26.5（23F77）。
+> `PASS-with-caveat` 仍计 PASS，但边界写在备注并在 §4 列出，T38 必须逐条确认；`PENDING-T38` 是 T32/T34b 之外仍需补真实 L4 的行。
+
+## 0. 汇总统计
+
+| 范围 | PASS | FAIL | PENDING-T32 | PENDING-T34b | PENDING-T38 | PENDING-T41 | Phase-1-out | 合计 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 44 个验收步骤 | 27 | 0 | 6 | 10 | 0 | 1 | 0 | 44 |
+| 70 条 AC | 57 | 0 | 8 | 3 | 2 | 0 | 0 | 70 |
+
+PASS 行 = 有实际命令 + 日志/截图 + 设备 + 构建 SHA。PENDING 行 = 已列出“已有证据 + 缺什么 + 由哪个任务关闭”。
 
 ## 1. 模拟器验收 44 步
 
 | 步骤 | 状态 | 证据（命令/日志/截图） | 设备 | 备注 |
 |---|---|---|---|---|
-| A1 | PENDING | — | 17 Pro / SE3 | — |
-| A2 | PENDING | — | 17 Pro / SE3 | — |
-| A3 | PENDING | — | 17 Pro / SE3 | — |
-| A4 | PENDING | — | 17 Pro / SE3 | — |
-| A5 | PENDING | — | 17 Pro / SE3 | — |
-| B1 | PENDING | — | 17 Pro / SE3 | — |
-| B2 | PENDING | — | 17 Pro / SE3 | — |
-| B3 | PENDING | — | 17 Pro / SE3 | — |
-| B4 | PENDING | — | 17 Pro / SE3 | — |
-| B5 | PENDING | — | 17 Pro / SE3 | — |
-| B6 | PENDING | — | 17 Pro / SE3 | — |
-| B7 | PENDING | — | 17 Pro / SE3 | — |
-| C1 | PENDING | — | 17 Pro / SE3 | — |
-| C2 | PENDING | — | 17 Pro / SE3 | — |
-| C3 | PENDING | — | 17 Pro / SE3 | — |
-| C4 | PENDING | — | 17 Pro / SE3 | — |
-| C5 | PENDING | — | 17 Pro / SE3 | — |
-| C6 | PENDING | — | 17 Pro / SE3 | — |
-| C7 | PENDING | — | 17 Pro / SE3 | — |
-| C8 | PENDING | — | 17 Pro / SE3 | — |
-| C9 | PENDING | — | 17 Pro / SE3 | — |
-| C10 | PENDING | — | 17 Pro / SE3 | — |
-| C11 | PENDING | — | 17 Pro / SE3 | — |
-| D1 | PENDING | — | 17 Pro / SE3 | — |
-| D2 | PENDING | — | 17 Pro / SE3 | — |
-| D3 | PENDING | — | 17 Pro / SE3 | — |
-| D4 | PENDING | — | 17 Pro / SE3 | — |
-| D5 | PENDING | — | 17 Pro / SE3 | — |
-| D6 | PENDING | — | 17 Pro / SE3 | — |
-| D7 | PENDING | — | 17 Pro / SE3 | — |
-| D8 | PENDING | — | 17 Pro / SE3 | — |
-| E1 | PENDING | — | 17 Pro / SE3 | — |
-| E2 | PENDING | — | 17 Pro / SE3 | — |
-| E3 | PENDING | — | 17 Pro / SE3 | — |
-| E4 | PENDING | — | 17 Pro / SE3 | — |
-| F1 | PENDING | — | 17 Pro / SE3 | — |
-| F2 | PENDING | — | 17 Pro / SE3 | — |
-| F3 | PENDING | — | 17 Pro / SE3 | — |
-| F4 | PENDING | — | 17 Pro / SE3 | — |
-| F5 | PENDING | — | 17 Pro / SE3 | — |
-| G1 | PENDING | — | 17 Pro / SE3 | — |
-| G2 | PENDING | — | 17 Pro / SE3 | — |
-| G3 | PENDING | — | 17 Pro / SE3 | — |
-| G4 | PENDING | — | 17 Pro / SE3 | — |
+| A1 | PASS | `bash scripts/e2e/ios/run_approval_real.sh --tag green`（T27）与 `bash scripts/e2e/ios/run_cold_start_real.sh`（T30）都先 `simctl uninstall` 再走真实 Welcome→本机引导→引擎 running；`reports/phase1-completion/T34a/09-xcodebuild-test.log` 首屏截图 `reports/phase1-completion/T34a/testAppLaunches-first-screen.png`；L2 `cd app && flutter test test/phase1/d2_01_onboarding_test.dart`。日志：`reports/phase1-completion/T27/green/pass/run-green.log`、`T30/seed.log`。 | 17Pro 1D9F | 构建 SHA 9d046121 + 0304eb47；iOS 无 Android 专属权限；测试中 optional permission 跳过。 |
+| A2 | PENDING-T34b | 已有：`reports/phase1-completion/T30/verify.log` 冷启动直达 HomeShell（无 onboarding）、`D2-01_onboarding_not_repeated_after_complete` L2。缺：T34b `testColdLaunchAutoStart` 的 XCUITest 杀进程→冷启动不重复引导 + 从设置重进引导 PASS 日志/截图；`reports/phase1-completion/T34b/probe-01.log` 失败于 49.5s（App not running）、`probe-02.log` 执行 0 tests。 | 17Pro 1D9F | PENDING-T34b。 |
+| A3 | PASS | `DSH_SIM_UDID=5DBBD04A-9EEB-460A-8574-2193271D5610 bash scripts/e2e/ios/run_workspace_real.sh` → `T31/green/workspace_real.log`（provider created 1443ms、catalog lists deepseek-v4.1-flash 748ms、model selected）；`reports/phase1-completion/T27/green/pass/run-green.log` 同路径；表单/校验 L2 `cd app && flutter test test/phase1/d2_03_provider_headers_test.dart test/phase1/d2_03_provider_config_test.dart`。 | 17Pro 5DBB / 1D9F | 构建 SHA a2fdff83 + 9d046121；mock:3901 子步骤由 v1.1 真实网关 + L2 表单测试取代（真实 run 用 ProviderActions.save，不是手点表单）。 |
+| A4 | PASS | `cd app && flutter test test/phase1/d2_04_model_switch_test.dart`（下一条消息使用新模型）；T31 `T31/green/workspace_real.log`（model selected → 21s 真实回合）；T27 `T27/green/pass/run-green.log`（model selected → 真实 write 工具回合）。 | 17Pro 5DBB / 1D9F | 构建 SHA df8ea211 + a2fdff83 + 9d046121；真实 run 以 engine session/model 断言，不是 mock 请求日志的 model 字段。 |
+| A5 | PASS | `cd app && flutter test test/phase1/d9_01_privacy_test.dart`（关闭后 SharedPreferences=false、零上报、iOS UsageChannel 丢弃）；`reports/wave2/T10-T11-config-onboarding.md`。 | HOST | 构建 SHA da2a35ff；进程级 kill/relaunch 未单独复跑（持久化 + 真实冷启动由 T30/T34a 覆盖）；T38 需显式确认。 |
+| B1 | PASS | `reports/phase1-completion/T30/seed.log`（干净安装→本机引擎 running）、`reports/phase1-completion/T27/green/pass/run-green.log`（安装→running）；T35a `reports/phase1-completion/T35a/report.md` §5.2（warm-up install 11s、start 3.1s）；L2 `cd app && flutter test test/engine/d1_01_install_test.dart`。 | 17Pro 1D9F / DAFDCC52 | 构建 SHA 0304eb47 + 09695108。 |
+| B2 | PENDING-T34b | 已有：T7 L4 `reports/wave1/t7-d1-01-l4.json` / `reports/wave1/t7-d1-01-ac2-resumed.png`（解压 40% `simctl terminate` → 续装 11s）；`reports/phase1-completion/T34a/09-xcodebuild-test.log` 2/2（仅启动/冷重启骨架）。缺：T34b `testInstallResume` 中途 terminate→续装完成 PASS 日志/截图。 | 17Pro 1D9F | PENDING-T34b。 |
+| B3 | PASS | T26 L4 `T26/l4-alt-17pro-run3.log`（stop 506ms / start 2915ms、新会话回合）；T35a `node tooling/ios/engine-smoke/d1-02-lifecycle-check.mjs ...` → `T35a/28-d1-02-se3.log`（16 checks ALL PASS、same pid）；L2 `cd app && flutter test test/engine/d1_02_lifecycle_test.dart`。 | 17Pro 5DBB / SE3 8A82B667 | 构建 SHA 6be6e09e + 09695108；进行中回合被 stop 中断由 L2 `D1-02_start_stop_interrupts_turn` 断言。 |
+| B4 | PASS | T26 `T26/l4-alt-17pro-run3.log`（同进程 stop→start、无需重开 App、新会话 + 原会话续话均 PASS）；T35a same-pid lifecycle check。 | 17Pro 5DBB | 构建 SHA 6be6e09e + 09695108。 |
+| B5 | PENDING-T34b | 已有：T30 process-level `T30/autostart_off.log`（冷启动 25s 仅 installed）+ `verify.log`（starting→running）+ 设置写回；`run-final.log` 5 phases PASS。缺：T34b `testColdLaunchAutoStart` 在真实引擎页点开关→冷启动→不自动启动、再打开→自动启动 PASS 与截图。 | 17Pro 1D9F | PENDING-T34b；AC D1-02-AC3 已由 T30 在设置控制器层覆盖。 |
+| B6 | PENDING-T34b | 已有：T8-T9 L4 失败码可读（`reports/wave2/T8-T9-engine-lifecycle-logs.md` §4）、T34a 首屏骨架；`reports/phase1-completion/T34b/probe-01.log` 在 49.5s 报 Application is not running（失败）。缺：T34b `testFailureDiagnostics`（破坏 runtime → 冷启动 → 可读原因/重试/日志入口 + 不崩溃）PASS。 | 17Pro 1D9F | PENDING-T34b。 |
+| B7 | PENDING-T34b | 已有：D1-04 L2/L4 快照/seq/脱敏（`cd app && flutter test test/engine/d1_04_logs_test.dart`、`reports/phase1-completion/T35a/28-d1-02-se3.log`）；T34a 首屏。缺：T34b `testLogsRedactionAndCopy`（打开日志页→滚动/复制→无完整凭据→粘贴板断言）PASS。 | 17Pro 1D9F | PENDING-T34b。 |
+| C1 | PASS | `cd app && flutter test test/chat/phase1/d3_01_new_chat_test.dart` 6/6；`reports/phase1-completion/T31/green/workspace_real.log` 首条 send 才创建 session；`reports/phase1-completion/T33b-relay/green/02-flutter-test.log` 空会话被可见列表过滤（local visible []、local engine sessions 1）。 | HOST / 17Pro 5DBB / 1D9F | 构建 SHA c47c4529 + a2fdff83 + dcfc485c。 |
+| C2 | PASS | T31 `T31/green/workspace_real.log`（stream observations=10、final answer visible、turn 21s）；`reports/phase1-completion/T30/verify.log`（重开 messages persisted（user + assistant））；L2 `cd app && flutter test test/chat/phase1/d3_02_stream_test.dart`。 | 17Pro 5DBB / 1D9F | 构建 SHA a2fdff83 + 0304eb47。 |
+| C3 | PASS | L2 `cd app && flutter test test/chat/phase1/d3_02_stream_test.dart`（`D3-02_thinking_collapsed_shows_preview`）；`reports/phase1-completion/T33b-relay/green/shots/04-turn1-reasoning.png`（真实推理块渲染）；`T33b-relay/report.md` §5。 | 17Pro 1D9F | 构建 SHA 5a30af26 + dcfc485c；真实 run 未逐帧做展开/收起点击，L2 断言折叠首行预览。 |
+| C4 | PENDING-T32 | 已有：L2 `cd app && flutter test test/chat/phase1/d3_03_steer_test.dart`（不中断/底部显示/失败保留）；T32 的多次真实 run 已跑到 C4（02:41 观察到 steer bubble / `steer echoed ... seq 24` / `steer used ... seq 24`，截图 `T32/screenshots/steer.png`）——但 `T32/green/chat_features_real.log` 正被后续 run 覆盖，这些行是**观察到的瞬时证据，不是持久日志**；且该 run 在 C10 失败、无最终 PASS/提交。缺：T32 最终 PASS/提交。 | 17Pro 1D9F | PENDING-T32。 |
+| C5 | PENDING-T32 | 已有：L2 `cd app && flutter test test/chat/phase1/d3_04_queue_test.dart`（排队/立即发送/撤回）；02:41 run 观察到 withdraw 回输入框 / queued QUEUED_OK / queue auto-sent seq 34 + `T32/screenshots/steer.png`——但日志随后被新 run 覆盖，非持久证据；该 run 在 C10 失败、无最终 PASS/提交。缺：T32 最终 PASS/提交 + C5 截图。 | 17Pro 1D9F | PENDING-T32。 |
+| C6 | PENDING-T32 | 已有：L2 `cd app && flutter test test/chat/phase1/d3_05_stop_test.dart`；T22b 旧 C6 PASS（`reports/phase1/acceptance-run/`，非 v1.1 证据）；02:41 run 观察到 stopped 42 字符/kept 2083 + CONTINUE_OK + `T32/screenshots/stop.png`——但日志随后被新 run 覆盖，非持久证据；该 run 在 C10 失败、无最终 PASS/提交。缺：T32 最终 PASS/提交。 | 17Pro 1D9F | PENDING-T32。 |
+| C7 | PASS | `bash scripts/e2e/ios/run_approval_real.sh --tag green` → `T27/green/pass/run-green.log`（allow approvals=1；write[succeeded]；file exists once；turn 11.0s）；截图 `T27/green/03-approval-allow-card.png`、`05-allow-result.png`。 | 17Pro 1D9F | 构建 SHA 9d046121；真实 opencode-go deepseek-v4.1-flash；session modes 保持 workspace-write。 |
+| C8 | PASS | 同 T27 run → `T27/green/pass/run-green.log`（deny approvals=1；write[denied]；`dsh-approval-no.txt` absent；turn 8.8s）；截图 `T27/green/04-approval-deny-card.png`、`06-deny-result.png`。 | 17Pro 1D9F | 构建 SHA 9d046121。 |
+| C9 | PENDING-T32 | 已有：`reports/phase1-completion/T31/green/workspace_real.log` 展开真实 turn process 看到 write/bash/read 工具行与 wc/read 输出（部分 C9）；L2 `d3_08_tool_row_test.dart`；`T32/green/chat_features_real.log` 02:41 run 观察到 bash `printf 'tool-row-ok'` 工具行命令+输出 + `T32/screenshots/tool.png`——但日志随后被新 run 覆盖，非持久证据。缺：T32 真实失败工具行错误态 + 最终 PASS/提交。 | 17Pro 5DBB / 1D9F | PENDING-T32。 |
+| C10 | PENDING-T32 | 已有：L2 `cd app && flutter test test/chat/phase1/d3_19_message_actions_test.dart`（复制/菜单/重答/引用）；`reports/wave1/T12-chat-stream.md`；`T32/green/chat_features_real.log` 02:41 run 仅到 copy 校验就在 `_longPressFirst` 抛 `Bad state: No element`（日志随后被覆盖），重答/引用未执行。缺：修复 C10 finder 后的真实复制/重答/引用 PASS + 截图。 | 17Pro 1D9F | PENDING-T32。 |
+| C11 | PENDING-T32 | 已有：L2 `cd app && flutter test test/chat/phase1/d3_07_question_plan_test.dart`（提问卡/计划待审）；旧 T22b 为 DEFERRED-MOCK（非 v1.1 证据）；`T32/green/chat_features_real.log` 02:41 run 在 C10 失败，尚未到达 C11（日志随后被覆盖）。缺：T32 真实模型触发提问卡→选项提交→已答回传 PASS。 | 17Pro 1D9F | PENDING-T32。 |
+| D1 | PASS | L2 `cd app && flutter test test/sessions/d4_01_sessions_drawer_test.dart` 7/7（排序/未读/待确认/切换）；`reports/phase1-completion/T33b-relay/green/02-flutter-test.log` 远程会话列表加载；`reports/phase1-completion/T30/verify.log` 会话跨冷启动保留。 | HOST / 17Pro 1D9F | 构建 SHA bd65232b + dcfc485c + 0304eb47。 |
+| D2 | PASS | L2 `cd app && flutter test test/sessions/d4_01_sessions_drawer_test.dart`（`D4-01_drawer_filters_unread` + 空状态）；`reports/wave1/T16-sessions.md`。 | HOST | 构建 SHA bd65232b。 |
+| D3 | PASS | L2 `cd app && flutter test test/sessions/d4_03_session_search_test.dart` 5/5（即时匹配/多关键词 AND/高亮/清空恢复）；`reports/wave1/T16-sessions.md`。 | HOST | 构建 SHA bd65232b。 |
+| D4 | PASS | `reports/phase1-completion/T33b-ssh/green/flutter-test.log`（本机 baseline 与 SSH 会话互不可见、切回本机仍在本机）；`reports/phase1-completion/T33b-relay/green/02-flutter-test.log`（local visible [] 与 remote session 不混）；`report.md` §7/§9。 | 17Pro BB0C8CB8 / 1D9F | 构建 SHA 40e0efe9 + dcfc485c。 |
+| D5 | PASS | `bash scripts/e2e/ios/run_workspace_real.sh` → T31 `T31/green/workspace_real.log`（files page lists notes/、preview 显示 5 条 bullet）、截图 `T31/screenshots/files.png`、`preview.png`；L2 `cd app && flutter test test/files/phase1/d4_05_files_test.dart`（image/PDF/missing/permission/binary）。 | 17Pro 5DBB | 构建 SHA a2fdff83；真实 L4 只做文本预览，image/PDF 用 L2 FilesChannel fake；T38 需确认 PDFKit 真机路径。 |
+| D6 | PENDING-T34b | 已有：L2 `cd app && flutter test test/chat/phase1/d4_07_attachments_test.dart`（相册 2 张→tray→发送卡片）、`reports/phase1-completion/T30/verify.log`（真实 70B 附件草稿恢复）；`reports/phase1-completion/T34b/probe-01.log` 失败、`probe-02.log` 0 tests。缺：T34b `testPhotosAttachment`（simctl addmedia→系统相册选择→tray→发送→mock 模型回复）PASS + 截图。 | 17Pro 1D9F | PENDING-T34b。 |
+| D7 | PASS | `cd app && flutter test test/chat/phase1/d4_07_attachments_test.dart`（`D4-07_sent_message_shows_thumbnail_and_file_card`：图片+文件发送后气泡含缩略图/文件卡、tray 清空）；`reports/wave2/T17-T18-files-persist.md`；T30 真实附件草稿恢复。 | HOST / 17Pro 1D9F | 构建 SHA 799ce827 + 0304eb47；系统 Files picker 弹窗未单独自动化（与 D6 同一选择器机制），T38 需确认。 |
+| D8 | PENDING-T34b | 已有：L2 `cd app && flutter test test/chat/phase1/d4_07_attachments_test.dart`（`D4-07_reject_more_than_nine_attachments` 10→9、200MB 拒绝）；`reports/wave2/T17-T18-files-persist.md`。缺：T34b UI 级一次选 >9/超限→拒绝提示 PASS（当前 T34b 脚本只做单张 Photos）。 | 17Pro 1D9F | PENDING-T34b。 |
+| E1 | PASS | `bash scripts/e2e/ios/run_cold_start_real.sh` → `T30/run-final.log`（5 phases PASS、710s）与 `T30/verify.log`（冷启动无 onboarding、session/title/messages 保留、auto-start starting→running、新真实回合成功）；Kill 前后 `T30/process-before/after-terminate-*.txt`。 | 17Pro 1D9F | 构建 SHA 0304eb47。 |
+| E2 | PASS | T26 `T26/l4-alt-17pro-run3.log`（同进程 stop→start、pre-stop 会话续话成功）；`reports/phase1-completion/T35a/28-d1-02-se3.log`（same pid、restart 2960ms）；`reports/phase1-completion/T30/verify.log`（工作区文件仍在）。 | 17Pro 5DBB / SE3 8A82B667 | 构建 SHA 6be6e09e + 09695108 + 0304eb47。 |
+| E3 | PASS | `reports/phase1-completion/T30/crash.log`（CRASH-READY-TO-KILL、engine unknown）、`crash_verify.log`（state=result-unknown、banner、确认前后副作用 0、未重跑）、截图 `T30/crash-mid-turn.png`；`run-final.log` crash/crash_verify PASS。 | 17Pro 1D9F | 构建 SHA 0304eb47；caveat：bash 被审批/工具策略门控，杀进程时工具未真正执行（`T30/report.md` §7/§9.3）；真实进程 kill + 横幅 + 不重跑已验。 |
+| E4 | PASS | `reports/phase1-completion/T30/verify.log`（draft restored text=34 chars attachment=t30-draft.png；DraftStore 字节逐字节 + Composer/ComposerTray 真实 UI）；L2 `cd app && flutter test test/chat/phase1/d4_07_attachments_test.dart`（draft survive relaunch）。 | 17Pro 1D9F | 构建 SHA 0304eb47 + 799ce827。 |
+| F1 | PASS | `reports/phase1-completion/T33b-ssh/green/flutter-test.log`（本机→SSH→本机，五步 link 完成、会话/工作区隔离）；`reports/phase1-completion/T33b-relay/green/02-flutter-test.log`（本机→自建 Remote→本机，remote 会话不出现在 local）；`report.md` §7/§9。 | 17Pro BB0C8CB8 / 1D9F | 构建 SHA 40e0efe9 + dcfc485c；SSH 与 Relay 分别验证三主机隔离，未在单次四跳流程中串联；T38 需确认。 |
+| F2 | PASS | T25 真实 sshd live 7/7（`reports/phase1-completion/T25/green/live_ssh.log`：wrong pinned key fails closed、rejected key clear auth error）；L2 `cd app && flutter test test/remote/d1_10_ssh_host_test.dart`（不可达/启动失败可读、可重试、不留半成品）；T33b 切回本机隔离。 | HOST / 17Pro BB0C8CB8 | 构建 SHA 60ff4665 + 40e0efe9；未注入真实不可达端口（真实负例是认证/指纹失败）；T38 需确认失败回退口径。 |
+| F3 | PASS | `bash scripts/e2e/ios/run_ssh_real.sh` → `T33b-ssh/green/flutter-test.log`（127.0.0.1:22422、TOFU `SHA256:lHRx1Dr5owDeSKieKBWfk7R3ePzaVOC2mQKlEkjwY4U`、保存、连接、五步 link、真实模型流式）；`T33b-ssh/green/run.env.json` / `ssh-ok.md`。 | 17Pro BB0C8CB8 | 构建 SHA 40e0efe9。 |
+| F4 | PASS | `reports/phase1-completion/T33b-ssh/green/flutter-test.log`（kill remote dsh web pid 49321 → phase=reconnecting attempt=1 → new pid 52673 → 重连 → 同 session 续话）；`report.md` §5/§6。 | 17Pro BB0C8CB8 | 构建 SHA 40e0efe9。 |
+| F5 | PASS | T33a `scripts/e2e/remote/relay_stack.sh self-test` → `reports/phase1-completion/T33a/02-green-self-test.log`（health/login/Host online/cleanup）；T33b-relay `bash scripts/e2e/ios/run_remote_real.sh` → `T33b-relay/green/02-flutter-test.log`（自建登录 1116ms、指纹 `AC86 7303 AC33`、relay 990ms、真实回合、Host restart 重连）。 | HOST / 17Pro 1D9F | 构建 SHA af08bf80 + dcfc485c；upstream pin 7e387df78479122306c65eefa2fa7a4ad7f26abf。 |
+| G1 | PENDING-T34b | 已有：`reports/phase1-completion/T34a/09-xcodebuild-test.log` 2/2（首屏/冷重启骨架，未断言深色）；T34b 代码已有 `testDarkColdLaunch`（luminance<0.35）与 `run_ui_process.sh dark` 计划。缺：T34b dark flow 实际 PASS 日志/截图。 | 17Pro 1D9F | PENDING-T34b。 |
+| G2 | PENDING-T34b | 已有：l10n `python3 app/tool/l10n_merge.py --check` OK（T28 `green/10-l10n-check.log`）；T34b 代码已有 `testChineseBaseline`/`testEnglishColdLaunch`。缺：T34b english/chinese flow 实际 PASS。 | 17Pro 1D9F | PENDING-T34b。 |
+| G3 | PENDING-T34b | 已有：T35a SE3 指标（`T35a/29-cold-start-se3.log` 3668/3124/2877ms；`T35a/28-d1-02-se3.log` lifecycle 16 checks）；T34b 代码已有 `testSE3ColdLaunchDark`（仅深色冷启动）。缺：SE3 上重复 C1/C7/D1/D5 的布局/可点性 PASS（T34b SE3 flow 尚未跑）。 | SE3 8A82B667 / D9C6C518 | PENDING-T34b。 |
+| G4 | PENDING-T41 | 已有：T22b 旧 `--full` 设备 unsigned 构建成功（94.5s / Runner.app 227.1MB，`reports/phase1/acceptance-run/t22b-verify-full-rerun.log`）；T35b `--full` 计划包含 `tooling/ios/build.sh --release --no-codesign`（`T35b/06-dry-run-full.log`）。缺：T41 在当前 v1.1 分支实跑 `bash scripts/verify.sh --full` 的 release/unsigned 构建日志与产物大小。 | HOST（构建） | PENDING-T41。 |
 
 ## 2. AC 70 条证据
 
 | AC | 层级 | 状态 | 测试/命令 | 证据 |
 |---|---|---|---|---|
-| D1-01-AC1 | — | PENDING | — | — |
-| D1-01-AC2 | — | PENDING | — | — |
-| D1-01-AC3 | — | PENDING | — | — |
-| D1-02-AC1 | — | PENDING | — | — |
-| D1-02-AC2 | — | PENDING | — | — |
-| D1-02-AC3 | — | PENDING | — | — |
-| D1-02-AC4 | — | PENDING | — | — |
-| D1-04-AC1 | — | PENDING | — | — |
-| D1-04-AC2 | — | PENDING | — | — |
-| D1-04-AC3 | — | PENDING | — | — |
-| D2-01-AC1 | — | PENDING | — | — |
-| D2-01-AC2 | — | PENDING | — | — |
-| D2-01-AC3 | — | PENDING | — | — |
-| D2-03-AC1 | — | PENDING | — | — |
-| D2-03-AC2 | — | PENDING | — | — |
-| D2-03-AC3 | — | PENDING | — | — |
-| D2-03-AC4 | — | PENDING | — | — |
-| D2-04-AC1 | — | PENDING | — | — |
-| D2-04-AC2 | — | PENDING | — | — |
-| D2-04-AC3 | — | PENDING | — | — |
-| D3-01-AC1 | — | PENDING | — | — |
-| D3-01-AC2 | — | PENDING | — | — |
-| D3-02-AC1 | — | PENDING | — | — |
-| D3-02-AC2 | — | PENDING | — | — |
-| D3-02-AC3 | — | PENDING | — | — |
-| D3-03-AC1 | — | PENDING | — | — |
-| D3-03-AC2 | — | PENDING | — | — |
-| D3-04-AC1 | — | PENDING | — | — |
-| D3-04-AC2 | — | PENDING | — | — |
-| D3-05-AC1 | — | PENDING | — | — |
-| D3-05-AC2 | — | PENDING | — | — |
-| D3-05-AC3 | — | PENDING | — | — |
-| D3-06-AC1 | — | PENDING | — | — |
-| D3-06-AC2 | — | PENDING | — | — |
-| D3-06-AC3 | — | PENDING | — | — |
-| D3-07-AC1 | — | PENDING | — | — |
-| D3-07-AC2 | — | PENDING | — | — |
-| D3-08-AC1 | — | PENDING | — | — |
-| D3-08-AC2 | — | PENDING | — | — |
-| D3-08-AC3 | — | PENDING | — | — |
-| D3-19-AC1 | — | PENDING | — | — |
-| D3-19-AC2 | — | PENDING | — | — |
-| D3-19-AC3 | — | PENDING | — | — |
-| D4-01-AC1 | — | PENDING | — | — |
-| D4-01-AC2 | — | PENDING | — | — |
-| D4-01-AC3 | — | PENDING | — | — |
-| D4-03-AC1 | — | PENDING | — | — |
-| D4-03-AC2 | — | PENDING | — | — |
-| D4-05-AC1 | — | PENDING | — | — |
-| D4-05-AC2 | — | PENDING | — | — |
-| D4-05-AC3 | — | PENDING | — | — |
-| D4-07-AC1 | — | PENDING | — | — |
-| D4-07-AC2 | — | PENDING | — | — |
-| D4-07-AC3 | — | PENDING | — | — |
-| D9-01-AC1 | — | PENDING | — | — |
-| D9-01-AC2 | — | PENDING | — | — |
-| D9-01-AC3 | — | PENDING | — | — |
-| D1-09-AC1 | — | PENDING | — | — |
-| D1-09-AC2 | — | PENDING | — | — |
-| D1-09-AC3 | — | PENDING | — | — |
-| D1-10-AC1 | — | PENDING | — | — |
-| D1-10-AC2 | — | PENDING | — | — |
-| D1-10-AC3 | — | PENDING | — | — |
-| D1-11-AC1 | — | PENDING | — | — |
-| D1-11-AC2 | — | PENDING | — | — |
-| D1-11-AC3 | — | PENDING | — | — |
-| PERSIST-01-AC1 | — | PENDING | — | — |
-| PERSIST-01-AC2 | — | PENDING | — | — |
-| PERSIST-01-AC3 | — | PENDING | — | — |
-| PERSIST-01-AC4 | — | PENDING | — | — |
+| D1-01-AC1 | L4 | PASS | `app/test/engine/d1_01_install_test.dart` :: `D1-01_install_progress_to_installed` + `D1-01_install_progress_is_shown_while_installing`；`cd app && flutter test test/engine/d1_01_install_test.dart` | `reports/wave1/T7-engine-install.md` §3 + `reports/wave1/t7-d1-01-l4.json`（14/14）；`reports/phase1-completion/T30/seed.log` 真机安装→running；17Pro 1D9F；SHA 70d24ee3 + 0304eb47 |
+| D1-01-AC2 | L4+L5 | PENDING-T34b | `D1-01_install_in_flight_requests_share_one_native_call`（L4 由 `d1-01-install-check.mjs` 覆盖）；`cd app && flutter test test/engine/d1_01_install_test.dart` | PENDING-T34b：T7 L4 `reports/wave1/t7-d1-01-l4.json`（解压 40% 杀进程→续装 11s）+ `reports/wave1/t7-d1-01-ac2-resumed.png`；T34a 骨架 2/2；缺 T34b `testInstallResume` 进程级续装 PASS；17Pro 1D9F；SHA 70d24ee3 |
+| D1-01-AC3 | L2+L5 | PASS | `D1-01_install_failure_shows_retry` + `D1-01_install_is_idempotent_when_current`；`cd app && flutter test test/engine/d1_01_install_test.dart` | `reports/wave1/T7-engine-install.md` §4/§7（5/5）；HOST；SHA 70d24ee3；L5 真机磁盘满/损坏包未做，T38 需确认 L2 是否足够 |
+| D1-02-AC1 | L2+L4 | PASS | `D1-02_start_stop_interrupts_turn`；`cd app && flutter test test/engine/d1_02_lifecycle_test.dart` | T26 `T26/l4-alt-17pro-run3.log`（stop 506ms/start 2915ms）；`reports/phase1-completion/T35a/28-d1-02-se3.log` 16 checks；17Pro 5DBB / SE3 8A82B667；SHA 6be6e09e + 09695108；进行中回合中断由 L2 断言 |
+| D1-02-AC2 | L4+L5 | PASS | `D1-02_restart_after_stop_without_relaunch`；`app/integration_test/run_phase1_e2e.sh --device 5DBB... --keep-mock` | `reports/phase1-completion/T26/l4-alt-17pro-run3.log`（同进程 restart、新会话+续话）；T35a same pid；17Pro 5DBB；SHA 6be6e09e + 09695108 |
+| D1-02-AC3 | L4 | PASS | `D1-02_auto_start_follows_setting` + `D1-02_auto_start_follows_setting_2`；`cd app && flutter test test/engine/d1_02_lifecycle_test.dart` | `reports/phase1-completion/T30/verify.log` starting→running、`autostart_off.log` 25s 仅 installed、`run-final.log` 5 phases；17Pro 1D9F；SHA 0304eb47 |
+| D1-02-AC4 | L2 | PASS | `D1-02_double_start_is_idempotent` + `D1-02_double_stop_is_idempotent`；`cd app && flutter test test/engine/d1_02_lifecycle_test.dart` | RED `reports/wave2/T8-T9-red.log`；T35a same-pid check；HOST/SE3；SHA 0eb9ffa6 + 09695108 |
+| D1-04-AC1 | L1+L2+L4 | PASS | `D1-04_log_snapshot_does_not_overlap_events`；`cd app && flutter test test/engine/d1_04_logs_test.dart` | `reports/phase1-completion/T35a/28-d1-02-se3.log`（13 entries、seq 单调、ring≤2000）；T8-T9 L4 `reports/wave2/t8-t9-l4.json`；SE3 8A82B667；SHA 09695108 |
+| D1-04-AC2 | L2+L5 | PENDING-T34b | `D1-04_start_failure_shows_reason`；`cd app && flutter test test/engine/d1_04_logs_test.dart` | PENDING-T34b：T8-T9 L4 失败码（`reports/wave2/T8-T9-engine-lifecycle-logs.md` §4）；T34a 骨架；`reports/phase1-completion/T34b/probe-01.log` 失败；缺 `testFailureDiagnostics`（可读原因/复制/日志入口）；17Pro 1D9F；SHA 0eb9ffa6 |
+| D1-04-AC3 | L1 | PASS | `D1-04_logs_mask_credentials`；`cd app && flutter test test/engine/d1_04_logs_test.dart` | RED→`redactDiagnostics` 修复；`reports/wave2/T8-T9-engine-lifecycle-logs.md` §5；HOST；SHA 0eb9ffa6 |
+| D2-01-AC1 | L2 | PASS | `D2-01_onboarding_choice_local_vs_remote`；`cd app && flutter test test/phase1/d2_01_onboarding_test.dart` | `reports/wave2/T10-T11-config-onboarding.md`；T27/T30 干净安装真实 onboarding；17Pro 1D9F；SHA da2a35ff + 9d046121 |
+| D2-01-AC2 | L5 | PASS | `D2-01_onboarding_minimal_permissions` + `D2-01_ios_access_walk_has_no_android_only_permission`；`cd app && flutter test test/phase1/d2_01_onboarding_test.dart` | `d2_01_permission_default_test.dart` clean install（无 danger-full-access）→ T27 `green/pass/run-green.log`；iOS 无 Android 专属权限；optional 弹窗跳过未记录序列；17Pro 1D9F；SHA 9d046121；T38 需确认 L5 口径 |
+| D2-01-AC3 | L2 | PASS | `D2-01_onboarding_not_repeated_after_complete` + `D2-01_settings_can_change_host_without_resetting_onboarding`；`cd app && flutter test test/phase1/d2_01_onboarding_test.dart` | L2 绿；`reports/phase1-completion/T30/verify.log` 冷启动无 onboarding；17Pro 1D9F；SHA da2a35ff + 0304eb47 |
+| D2-03-AC1 | L2+L4 | PASS | `D2-03_add_custom_provider_saves_key_to_keychain` + `D2-03_provider_keys_use_the_secure_storage_prefix` + `D2-03_saved_model_appears_in_model_catalog_after_invalidation`；`cd app && flutter test test/phase1/d2_03_provider_config_test.dart` | `reports/phase1-completion/T31/green/workspace_real.log`（provider 1443ms、catalog 748ms）；`reports/phase1-completion/T27/green/pass/run-green.log`；17Pro 5DBB/1D9F；SHA 416d6138 + a2fdff83 + 9d046121 |
+| D2-03-AC2 | L2 | PASS | `D2-03_invalid_base_url_shows_error` + `D2-03_rejected_key_shows_readable_error_and_saves_nothing` + `D2-03_base_url_validation_rejects_unusable_urls`；`cd app && flutter test test/phase1/d2_03_provider_transaction_test.dart` | `reports/phase1-completion/T29/green/11-targeted-final.log` 11 passed（key 失败回滚/不落半成品）；`app/test/phase1/d2_03_provider_config_test.dart`；HOST；SHA df8ea211 |
+| D2-03-AC3 | L2 | PASS | `D2-03_edit_provider_isolated_to_one_channel`；`cd app && flutter test test/phase1/d2_03_provider_config_test.dart` | `reports/phase1-completion/T29/green/12-phase1-final.log` 56 passed；HOST；SHA 416d6138 + df8ea211 |
+| D2-03-AC4 | L2+L4 | PASS | `D2-03_provider_headers_roundtrip_and_validate` + `D2-03_provider_headers_sent_on_inference`；`cd app && flutter test test/phase1/d2_03_provider_headers_test.dart` + `cd packages/dsh_client && dart test test/providers_api_test.dart` | `reports/phase1-completion/T28/report.md` §3（10+28 passed）；T33b relay/ssh 真实 profile 读回 `x-opencode-session` 并真实推理（`reports/phase1-completion/T33b-relay/report.md` §4、`reports/phase1-completion/T33b-ssh/green/flutter-test.log`）；T31 真实渠道带 header；17Pro 1D9F/5DBB/BB0C；SHA 416d6138 + dcfc485c + 40e0efe9 |
+| D2-04-AC1 | L2+L4 | PASS | `D2-04_switch_model_applies_to_next_turn` + `D2-04_model_selection_persists_via_select_model`；`cd app && flutter test test/phase1/d2_04_model_switch_test.dart` | `reports/phase1-completion/T31/green/workspace_real.log`（model selected→真回合）；`reports/phase1-completion/T27/green/pass/run-green.log`；17Pro；SHA df8ea211 + a2fdff83 + 9d046121 |
+| D2-04-AC2 | L2+L4 | PASS | `D2-04_thinking_levels_hidden_when_unsupported`；`cd app && flutter test test/phase1/d2_04_model_switch_test.dart` | `reports/wave2/T10-T11-config-onboarding.md`；T31 thinking max catalog；`reports/phase1-completion/T33b-relay/green/shots/04-turn1-reasoning.png`；17Pro；SHA df8ea211 + a2fdff83 + dcfc485c |
+| D2-04-AC3 | L2 | PASS | `D2-04_switch_failure_keeps_previous_model` + `..._and_draft` + `D2-04_no_models_offers_configuration_entry`；`cd app && flutter test test/phase1/d2_04_model_removed_fallback_test.dart` | T29 `reports/phase1-completion/T29/red/05-mutation-no-turn-fallback.log` / `06-mutation-no-preflight.log`；HOST；SHA df8ea211 |
+| D3-01-AC1 | L2+L4 | PASS | `D3-01_first_message_creates_session_and_sends_prompt` + `D3-01_new_chat_shows_composer_and_creates_nothing`；`cd app && flutter test test/chat/phase1/d3_01_new_chat_test.dart` | L2 6/6；T31 真实首条 send 建会话；T26 restart retry `reports/phase1-completion/T26/l4-alt-17pro-run3.log`；17Pro 5DBB；SHA c47c4529 + 6be6e09e + a2fdff83 |
+| D3-01-AC2 | L2 | PASS | `D3-01_send_without_host_shows_error` + `D3-01_send_failure_keeps_draft`；`cd app && flutter test test/chat/phase1/d3_01_new_chat_test.dart` | `reports/wave1/T12-chat-stream.md`；HOST；SHA c47c4529 |
+| D3-02-AC1 | L2+L4 | PASS | `D3-02_stream_appends_chunks_incrementally` + `D3-02_reopened_transcript_shows_the_full_answer`；`cd app && flutter test test/chat/phase1/d3_02_stream_test.dart` | `reports/phase1-completion/T31/green/workspace_real.log` 10 prefixes + final；`reports/phase1-completion/T30/verify.log` 重开 messages persisted；17Pro；SHA c47c4529 + a2fdff83 + 0304eb47 |
+| D3-02-AC2 | L2 | PASS | `D3-02_thinking_collapsed_shows_preview`；`cd app && flutter test test/chat/phase1/d3_02_stream_test.dart` | `reports/phase1-completion/T33b-relay/green/shots/04-turn1-reasoning.png`；17Pro 1D9F；SHA 5a30af26 + dcfc485c |
+| D3-02-AC3 | L2+L4 | PASS | `D3-02_stream_error_shows_retry_state` + `D3-02_stream_error_within_flush_window_clears_streaming` + `D3-02_stream_onDone_within_flush_window_clears_streaming`；`cd app && flutter test test/chat/phase1/d3_02_stream_test.dart` | `reports/wave1/T12-red-race.log`（RED race）→ `fee98b1b`；`reports/phase1-completion/T26/l4-alt-17pro-run3.log`（L4 restart）；HOST/17Pro；SHA c47c4529 + 6be6e09e |
+| D3-03-AC1 | L2+L4 | PENDING-T32 | `D3-03_steer_does_not_abort_turn` + `D3-03_steer_shows_at_the_bottom_of_the_conversation`；`cd app && flutter test test/chat/phase1/d3_03_steer_test.dart` | PENDING-T32：L2 已绿（`reports/wave2/T13-T15-chat-flow.md`）；02:41 run 观察到 C4 断言（steer seq 24）+ `T32/screenshots/steer.png`，但日志被后续 run 覆盖、整轮在 C10 失败、无最终 PASS/提交；17Pro 1D9F；SHA 5a30af26 |
+| D3-03-AC2 | L2 | PASS | `D3-03_steer_failure_restores_draft` + `_2`；`cd app && flutter test test/chat/phase1/d3_03_steer_test.dart` | `reports/wave2/T13-T15-chat-flow.md`；HOST；SHA 5a30af26 |
+| D3-04-AC1 | L2+L4 | PENDING-T32 | `D3-04_queued_message_sends_after_turn` + `D3-04_queue_actions_do_not_duplicate`；`cd app && flutter test test/chat/phase1/d3_04_queue_test.dart` | PENDING-T32：L2 已绿；02:41 run 观察到 C5 断言（queue auto-sent seq 34、withdraw 回输入框 + `steer.png`），但日志被后续 run 覆盖、整轮在 C10 失败、无最终 PASS/提交；17Pro 1D9F；SHA 5a30af26 |
+| D3-04-AC2 | L2 | PASS | `D3-04_send_now_sends_once_in_place` + `D3-04_withdraw_returns_text_to_composer`；`cd app && flutter test test/chat/phase1/d3_04_queue_test.dart` | `reports/wave2/T13-T15-chat-flow.md`；HOST；SHA 5a30af26 |
+| D3-05-AC1 | L2+L4 | PENDING-T32 | `D3-05_stop_ends_turn_and_keeps_partial`；`cd app && flutter test test/chat/phase1/d3_05_stop_test.dart` | PENDING-T32：L2 已绿；T22b 旧 C6 PASS 非 v1.1；02:41 run 观察到 C6 断言（stopped 42/kept 2083 + CONTINUE_OK）+ `stop.png`，但日志被后续 run 覆盖、整轮在 C10 失败、无最终 PASS/提交；17Pro 1D9F；SHA 5a30af26 |
+| D3-05-AC2 | L2+L4 | PENDING-T32 | `D3-05_stop_failure_does_not_claim_stopped` + `D3-05_stop_then_queue_starts_next`；`cd app && flutter test test/chat/phase1/d3_05_stop_test.dart` | PENDING-T32：L2 已绿；02:41 run 观察到 C5 queue auto-sent（seq 34）与 C6 stop 后再发送（CONTINUE_OK），但 stopped 后的排队场景未单独断言；日志被覆盖、整轮在 C10 失败、无最终 PASS/提交；17Pro 1D9F；SHA 5a30af26 |
+| D3-05-AC3 | L2 | PASS | `D3-05_stop_timeout_reports_unknown`（真实 RED→修复）；`cd app && flutter test test/chat/phase1/d3_05_stop_test.dart` | `reports/wave2/T13-T15-red.log`；HOST；SHA 5a30af26 |
+| D3-06-AC1 | L3+L4 | PASS | `D3-06_allow_once_executes_tool_once` + `D3-06_allow_once_card_shows_command_and_reason`；`cd app && flutter test test/chat/phase1/d3_06_approval_test.dart` | T27 真实 allow：`reports/phase1-completion/T27/green/pass/run-green.log`（write[succeeded], file exists once, 11.0s）+ `reports/phase1-completion/T27/green/03-approval-allow-card.png` + `reports/phase1-completion/T27/green/05-allow-result.png`；17Pro 1D9F；SHA 9d046121 |
+| D3-06-AC2 | L3+L4 | PASS | `D3-06_deny_approval_blocks_tool` + `D3-06_deny_sends_one_decision`；`cd app && flutter test test/chat/phase1/d3_06_approval_test.dart` | T27 真实 deny：`reports/phase1-completion/T27/green/pass/run-green.log`（write[denied], file absent, 8.8s）+ `reports/phase1-completion/T27/green/04-approval-deny-card.png` + `reports/phase1-completion/T27/green/06-deny-result.png`；17Pro 1D9F；SHA 9d046121 |
+| D3-06-AC3 | L2+L4 | PASS | `D3-06_auto_allow_resets_after_restart` + `D3-06_auto_allow_banner_can_be_turned_off`；`cd app && flutter test test/chat/phase1/d3_06_approval_test.dart` | `reports/wave2/T13-T15-chat-flow.md`；L2 绿；真实 restart 后恢复逐次询问未单独重放；HOST；SHA 5a30af26；T38 需确认 |
+| D3-07-AC1 | L2 | PENDING-T32 | `D3-07_question_answer_submits_once` + `D3-07_question_answer_from_composer` + `D3-07_answer_failure_keeps_card_retryable` + `D3-07_question_submit_is_not_duplicated` + `D3-07_question_holding_answer_sends_once`；`cd app && flutter test test/chat/phase1/d3_07_question_plan_test.dart` | PENDING-T32：L2 已绿；旧 T22b 为 DEFERRED-MOCK；缺真实模型触发提问卡→选项提交→已答回传 PASS；17Pro 1D9F；SHA 5a30af26 |
+| D3-07-AC2 | L2 | PENDING-T32 | `D3-07_plan_review_answer_is_sent_once` + `D3-07_plan_review_request_changes_is_sent_once`；`cd app && flutter test test/chat/phase1/d3_07_question_plan_test.dart` | PENDING-T32：L2 已绿（RED：计划待审标题，`reports/wave2/T13-T15-red.log`）；缺真实计划待审卡→同意/要求修改 PASS；17Pro 1D9F；SHA 5a30af26 |
+| D3-08-AC1 | L2 | PASS | `D3-08_tool_row_summary_and_expand` + `..._ui`；`cd app && flutter test test/chat/phase1/d3_08_tool_row_test.dart` | `reports/phase1-completion/T31/green/workspace_real.log`（展开真实 turn process，write/bash/read 工具行、wc/read 输出可见，部分 C9）；17Pro 5DBB；SHA a2fdff83 + 5a30af26 |
+| D3-08-AC2 | L2 | PASS | `D3-08_turn_folds_into_completed_summary`；`cd app && flutter test test/chat/phase1/d3_08_tool_row_test.dart` | `reports/phase1-completion/T31/green/workspace_real.log`（turnProcess=1，展开后工具行；真实回合折叠）；17Pro 5DBB；SHA a2fdff83 + 5a30af26 |
+| D3-08-AC3 | L2 | PASS | `D3-08_failed_tool_row_shows_error`；`cd app && flutter test test/chat/phase1/d3_08_tool_row_test.dart` | `reports/wave2/T13-T15-chat-flow.md`；HOST；SHA 5a30af26；真实失败工具行由 T32 C9 补强（PENDING-T32 步骤） |
+| D3-19-AC1 | L2+L5 | PENDING-T32 | `D3-19_copy_and_fork_from_message`；`cd app && flutter test test/chat/phase1/d3_19_message_actions_test.dart` | PENDING-T32：L2 已绿（复制/分享入口/分叉）；缺真实模型回合复制内容、分叉新会话且原对话不变 + 截图；17Pro 1D9F；SHA 5a30af26 |
+| D3-19-AC2 | L2+L4 | PENDING-T32 | `D3-19_regenerate_only_on_last_answer` + `D3-19_regenerate_resends_in_fork`；`cd app && flutter test test/chat/phase1/d3_19_message_actions_test.dart` | PENDING-T32：L2 已绿；缺真实模型重答→新对话重发、原对话不变、返回原对话；17Pro 1D9F；SHA 5a30af26 |
+| D3-19-AC3 | L2 | PASS | `D3-19_quote_block_attached_to_message`；`cd app && flutter test test/chat/phase1/d3_19_message_actions_test.dart` | `reports/wave2/T13-T15-chat-flow.md`；HOST；SHA 5a30af26 |
+| D4-01-AC1 | L2+L4 | PASS | `D4-01_drawer_lists_and_switches_sessions` + `D4-01_drawer_marks_unread_pending_and_question`；`cd app && flutter test test/sessions/d4_01_sessions_drawer_test.dart` | L2 7/7；T33b-relay 远程会话列表；`reports/phase1-completion/T30/verify.log` 会话跨冷启动；HOST/17Pro 1D9F；SHA bd65232b + dcfc485c + 0304eb47 |
+| D4-01-AC2 | L2 | PASS | `D4-01_drawer_filters_unread`；`cd app && flutter test test/sessions/d4_01_sessions_drawer_test.dart` | `reports/wave1/T16-sessions.md`；HOST；SHA bd65232b |
+| D4-01-AC3 | L2+L4 | PASS | `D4-01_sessions_follow_current_host` + `D4-01_disconnected_host_shows_connection_state`；`cd app && flutter test test/sessions/d4_01_sessions_drawer_test.dart` | L2；T33b-ssh/relay 真实主机切换隔离（`T33b-ssh/green/flutter-test.log`、`T33b-relay/green/02-flutter-test.log`）；17Pro BB0C/1D9F；SHA bd65232b + 40e0efe9 + dcfc485c |
+| D4-03-AC1 | L1+L2 | PASS | `D4-03_search_multi_keyword_and_highlight` + `D4-03_search_empty_and_overlong_queries`；`cd app && flutter test test/sessions/d4_03_session_search_test.dart` | 5/5；`reports/wave1/T16-sessions.md`；HOST；SHA bd65232b |
+| D4-03-AC2 | L4+L5 | PENDING-T38 | `D4-03_search_content_hits_when_indexed` + `D4-03_search_without_index_title_only` + `D4-03_search_no_results_empty_state`；`cd app && flutter test test/sessions/d4_03_session_search_test.dart` | PENDING-T38：L2 以 fake 索引覆盖；缺 v1.1 真实本机引擎内容索引搜索（正文命中/未索引主机仅标题+说明）的 L4 运行日志；HOST/17Pro；SHA bd65232b |
+| D4-05-AC1 | L2+L4+L5 | PASS | `D4-05_workspace_lists_and_previews_text` + `D4-05_previews_image_through_the_picture_viewer` + `D4-05_previews_pdf_page_by_page`；`cd app && flutter test test/files/phase1/d4_05_files_test.dart` | `reports/phase1-completion/T31/green/workspace_real.log`（真实文件页 notes/、文本预览）；截图 `T31/screenshots/files.png`、`preview.png`；17Pro 5DBB；SHA a2fdff83 + 799ce827；image/PDF 为 L2 fake，PDFKit 真机路径 T38 确认 |
+| D4-05-AC2 | L2 | PASS | `D4-05_preview_missing_file_shows_error` + `D4-05_preview_without_permission_shows_error` + `D4-05_preview_binary_and_unsupported_show_clear_notice`；`cd app && flutter test test/files/phase1/d4_05_files_test.dart` | `reports/wave2/T17-T18-files-persist.md`；HOST；SHA 799ce827 |
+| D4-05-AC3 | L4 | PASS | `D4-05_workspace_refreshes_after_agent_write` + `D4-05_workspace_list_is_isolated_per_session`；`cd app && flutter test test/files/phase1/d4_05_files_test.dart` | T31 真实 Agent write→文件页可见 + 第二工作区隔离；截图 `T31/screenshots/isolation.png`；17Pro 5DBB；SHA a2fdff83 |
+| D4-07-AC1 | L2+L5 | PENDING-T34b | `D4-07_attachment_tray_shows_selected_photos` + `D4-07_sent_message_shows_thumbnail_and_file_card`；`cd app && flutter test test/chat/phase1/d4_07_attachments_test.dart` | PENDING-T34b：L2 已绿；`reports/phase1-completion/T30/verify.log` 真实 70B 附件草稿恢复；缺 T34b `testPhotosAttachment`（系统相册选择器）PASS；T34b probe-01 失败、probe-02 0 tests；17Pro 1D9F；SHA 799ce827 + 0304eb47 |
+| D4-07-AC2 | L2 | PASS | `D4-07_reject_more_than_nine_attachments` + `D4-07_reject_file_over_200mb`；`cd app && flutter test test/chat/phase1/d4_07_attachments_test.dart` | 10→9 拒绝并提示、200MB 拒绝；`reports/wave2/T17-T18-files-persist.md`；HOST；SHA 799ce827；UI 级 D8 由 T34b 补 |
+| D4-07-AC3 | L4+L5 | PASS | `D4-07_draft_attachments_survive_relaunch`（真实 RED→修复 `draft_store.dart`）；`cd app && flutter test test/chat/phase1/d4_07_attachments_test.dart` | `reports/phase1-completion/T30/verify.log`（text=34 chars + t30-draft.png 70B 字节恢复、真实 Composer UI）；17Pro 1D9F；SHA 0304eb47 + 799ce827 |
+| D9-01-AC1 | L2+L5 | PASS | `D9-01_privacy_toggle_visible_on_first_run` + `D9-01_privacy_details_reachable_from_first_run`；`cd app && flutter test test/phase1/d9_01_privacy_test.dart` | `reports/wave2/T10-T11-config-onboarding.md`；HOST；SHA da2a35ff；A5 进程级 kill/relaunch 未单独复跑，T38 需确认 |
+| D9-01-AC2 | L2+L5 | PASS | `D9-01_no_usage_network_call_when_off` + `D9-01_ios_usage_facts_are_dropped_before_any_request`；`cd app && flutter test test/phase1/d9_01_privacy_test.dart` | `reports/wave2/T10-T11-config-onboarding.md`；关闭后零请求/清 ledger/iid；iOS UsageChannel 无上报；HOST；SHA da2a35ff；T38 需确认 L5 口径 |
+| D9-01-AC3 | L5 | PASS | `D9-01_privacy_page_lists_data_classes`；`cd app && flutter test test/phase1/d9_01_privacy_test.dart` | spec 标 L5，本任务加做 L2；`reports/wave2/T10-T11-config-onboarding.md`；HOST；SHA da2a35ff；L5 FAQ 对照未做，T38 需确认 |
+| D1-09-AC1 | L2+L4 | PASS | `D1-09_switch_host_updates_sessions` + `D1-09_switch_cycle_local_ssh_relay` + `D1-09_first_switch_moves_header_to_remote_host`；`cd app && flutter test test/remote/d1_09_host_switch_test.dart` | L2 9/9；`reports/wave1/T19-hosts.md`；T33b 真实主机切换；17Pro BB0C/1D9F；SHA 27200f98 + 40e0efe9 + dcfc485c |
+| D1-09-AC2 | L2+L4 | PASS | `D1-09_reconnect_last_host_on_cold_start` + `D1-09_saved_hosts_persist_across_restart`；`cd app && flutter test test/remote/d1_09_host_switch_test.dart` | `reports/wave1/T19-hosts.md`；T33b Host restart 重连（T33b-relay §6）；17Pro 1D9F；SHA 27200f98 + dcfc485c；App 冷启动连回远程未单独重放，T38 需确认 |
+| D1-09-AC3 | L2+L4 | PASS | `D1-09_unreachable_host_keeps_previous` + `D1-09_unreachable_host_shows_retry_and_manage` + `D1-09_missing_saved_host_falls_back_to_phone`；`cd app && flutter test test/remote/d1_09_host_switch_test.dart` | L2；T33b 切回本机会话不受影响（`T33b-ssh/green/flutter-test.log`、`T33b-relay/green/02-flutter-test.log`）；17Pro BB0C/1D9F；SHA 27200f98 + 40e0efe9 + dcfc485c |
+| D1-10-AC1 | L2+L5 | PASS | `D1-10_add_ssh_host_requires_fingerprint_trust` + `D1-10_ssh_connect_and_stream_message`；`cd app && flutter test test/remote/d1_10_ssh_host_test.dart` | T33b-ssh 真实 TOFU `SHA256:lHRx...`→信任→保存→连接；T25 真实 sshd live 7/7（`reports/phase1-completion/T25/green/live_ssh.log`）；17Pro BB0C；SHA 40e0efe9 + 60ff4665 |
+| D1-10-AC2 | L4+L5 | PASS | `D1-10_ssh_connect_and_stream_message` + `D1-10_ssh_active_host_loads_session_rows`；`cd app && flutter test test/remote/d1_10_ssh_host_test.dart` | `reports/phase1-completion/T33b-ssh/green/flutter-test.log`（远端自动 dsh web、tunnel、会话列表、真实模型流式、kill 后自动重连）；17Pro BB0C；SHA 40e0efe9 |
+| D1-10-AC3 | L2+L5 | PASS | `D1-10_ssh_auth_failure_shows_error` + `D1-10_ssh_private_key_error_does_not_echo_key` + `D1-10_ssh_private_key_error_detail_hides_key` + `D1-10_ssh_host_key_mismatch_fails_closed` + `D1-10_ssh_start_failure_leaves_no_tunnel`；`cd app && flutter test test/remote/d1_10_ssh_host_test.dart` | `reports/phase1-completion/T25/green/live_ssh.log`（真实 sshd 负例：wrong pinned key fails closed、rejected key clear auth error）；17Pro BB0C/HOST；SHA 40e0efe9 + 60ff4665 |
+| D1-11-AC1 | L4+L5 | PASS | `D1-11_remote_connect_lists_sessions`；`cd app && flutter test test/remote/d1_11_dsh_remote_test.dart` | `reports/phase1-completion/T33b-relay/green/02-flutter-test.log`（自建登录 1116ms、主机列表 online、指纹信任、relay 990ms、真实模型回合）；T33a stack；17Pro 1D9F；SHA dcfc485c + af08bf80 |
+| D1-11-AC2 | L4 | PASS | `D1-11_remote_reconnect_no_duplicate` + `D1-11_remote_unreachable_shows_retry` + `D1-11_remote_retry_is_visible_and_wired`；`cd app && flutter test test/remote/d1_11_dsh_remote_test.dart` | `reports/phase1-completion/T33b-relay/green/02-flutter-test.log`（Host restart → reconnecting→connected、generation 1→2、同 session 续话）；17Pro 1D9F；SHA dcfc485c |
+| D1-11-AC3 | L2 | PASS | `D1-11_terminal_entry_hidden_phase1`；`cd app && flutter test test/remote/d1_11_dsh_remote_test.dart` | `reports/wave2/T20-T21-ssh-remote.md`；HOST；SHA 4883e519 |
+| PERSIST-01-AC1 | L4+L5 | PASS | `PERSIST-01_relaunch_keeps_conversation` + `PERSIST-01_engine_auto_starts_after_relaunch`；`cd app && flutter test test/engine/phase1/persist_01_recovery_test.dart` | `reports/phase1-completion/T30/verify.log`（冷启动无 onboarding、session/title/messages 保留、auto-start starting→running、新真实回合）；17Pro 1D9F；SHA 0304eb47 |
+| PERSIST-01-AC2 | L4 | PASS | `PERSIST-01_engine_restart_keeps_conversation_and_draft`；`cd app && flutter test test/engine/phase1/persist_01_recovery_test.dart` | T26 L4 stop→start 同会话续话；`reports/phase1-completion/T30/verify.log` 工作区文件仍在；17Pro 5DBB/1D9F；SHA 6be6e09e + 0304eb47 |
+| PERSIST-01-AC3 | L2+L5 | PASS | `PERSIST-01_unknown_result_blocks_reexecution`；`cd app && flutter test test/engine/phase1/persist_01_recovery_test.dart` | `reports/phase1-completion/T30/crash_verify.log`（banner、确认前后副作用 0、未重跑）+ `crash-mid-turn.png`；17Pro 1D9F；SHA 0304eb47；caveat：工具被策略门控未真正执行（`T30/report.md` §9.3） |
+| PERSIST-01-AC4 | L4 | PENDING-T38 | `PERSIST-01_engine_crash_recoverable`；`cd app && flutter test test/engine/phase1/persist_01_recovery_test.dart` | PENDING-T38：L2 模拟 exit 70（App 存活/重试 start 一次）；缺 v1.1 真实引擎 exit 70 进程级运行（T30 crash 是宿主 kill App，不是引擎崩溃）；17Pro 1D9F；SHA 0304eb47 |
 
 ## 3. 缺口闭环对照
 
 | 缺口 | 任务 | 闭环证据 |
 |---|---|---|
-| G-01 | T25/T27/T30/T32/T33/T37 | 真实模型日志/视频 |
-| G-02 | T27 | 审批 allow/deny L4 |
-| G-03 | T30/T34 | 冷启动两阶段+UI test |
-| G-04 | T31 | 工作区真引擎 L4 |
-| G-05 | T33 | live_ssh + App L4 |
-| G-06 | T33 | 自托管 relay L4 |
-| G-07 | T32 | 5 项 L4 |
-| G-08 | T31/T34 | 系统选择器 UI test |
-| G-09 | T34 | B2/B5/B6/B7 进程级 |
-| G-10 | T33/T37 | 三主机隔离 |
-| G-11 | T34/T37 | dark/en/release/SE3 |
-| G-12 | T26 | superseded 修复+回归 |
-| G-13 | T29 | 故障注入 |
-| G-14 | T29 | 发送回退 |
-| G-15 | T35 | --full skip=0 |
-| G-16 | T34/T35/T36 | goldens/RunnerTests/live |
-| G-17 | T37 | 70 AC 矩阵 |
-| G-18 | T35 | T6 补测 |
-| G-19 | T36 | CI 绿 |
-| G-20 | T40 | 新录屏 |
-| G-21 | T39 | 报告 v2 |
+| G-01 | T25/T27/T30/T32/T33/T37 | T27/T30/T31/T33b PASS；T32 PENDING（C4–C6/C9–C11） |
+| G-02 | T27 | T27 PASS：真实 allow/deny L4-Real |
+| G-03 | T30/T34 | T30 PASS（5 phases）；T34b B2/B5/B6 PENDING |
+| G-04 | T31 | T31 PASS：真实工作区/文件页/隔离 |
+| G-05 | T33 | T33b-ssh PASS + T25 live 7/7 |
+| G-06 | T33 | T33b-relay PASS + T33a 自托管 stack |
+| G-07 | T32 | T32 PENDING（6 步）；T31 已补工具行/工作区 |
+| G-08 | T31/T34 | T31 文件页 PASS；T34b Photos PENDING |
+| G-09 | T34 | T34b PENDING（B2/B5/B6/B7） |
+| G-10 | T33/T37 | T33b SSH/Relay 隔离 PASS；四跳单流程 T38 确认 |
+| G-11 | T34/T37 | T35a metrics PASS；T34b G1/G2/G3 PENDING |
+| G-12 | T26 | T26 PASS：superseded 修复 + 回归 |
+| G-13 | T29 | T29 PASS：渠道保存回滚 |
+| G-14 | T29 | T29 PASS：UNKNOWN_MODEL 回退 |
+| G-15 | T35 | T35b PASS（self-test 17/17）；--full 实跑 T41 |
+| G-16 | T34/T35/T36 | T35a PASS（goldens 337/337、RunnerTests 367/367、metrics） |
+| G-17 | T37 | 本文件：70 AC / 44 步；57 PASS + 13 PENDING |
+| G-18 | T35 | T35a PASS（cold/20-launch/RSS/SE3）；TTFT 仍未测，转 T38/T41（不在 44/70 行内） |
+| G-19 | T36 | T36 PASS（drift guard/fast lane；Linux CI 未本地执行） |
+| G-20 | T40 | 未开始（T37 范围外） |
+| G-21 | T39 | 未开始（acceptance-report v2） |
+
+## 4. 证据边界 / T38 复核清单
+
+1. **T32 未落地且证据不稳定**：02:41 的一次 run 已真实跑到 C4/C5/C6/C9（steer seq 24、queue seq 34、stop 后 CONTINUE_OK、bash 工具行 `tool-row-ok`）并留下 `steer.png`/`stop.png`/`tool.png`；随后在 **C10** 的 `_longPressFirst` 抛 `Bad state: No element`，C10 重答/引用与 C11 未执行，整轮 **FAIL**。其后 `T32/green/chat_features_real.log` 被新的 run 覆盖，因此上述行/截图是**观察到的瞬时证据，不是持久日志**。8 条 AC / 6 个步骤仍全部 PENDING-T32；T32 修好 C10 后需在最终 PASS 日志上逐条翻 PASS。
+2. **T34b 未落地**：只有 `T34a` 的 2/2 启动/冷重启骨架；`T34b/probe-01.log` 在 49.5s 失败（App not running），`probe-02.log` 选中 0 tests。10 个步骤 / 3 条 AC PENDING-T34b。
+3. **T27 证据时序**：权威 GREEN 是 `T27/green/pass/run-green.log`（98s）；`pass/03`、`pass/04` 是截图 waiter 的 home-screen 时序 artifact，真实审批卡截图用 `T27/green/03-approval-allow-card.png`…`06-deny-result.png`（`T27/green/SCREENSHOTS.md`）。顶层 113s rerun 的 env 记录 `9a52ee6a`，该 commit 尚未合入本分支，引用时以 98s pass 日志为准。
+4. **T30 容器 UUID 重签发**：seed/verify 数据卷 UUID 不同是模拟器重装 bundle 的正常重签，App relocation 后会话/消息/草稿/附件/工作区全部恢复（`T30/report.md` §5/§9.2），不是数据丢失。
+5. **T30 crash-mid-turn caveat**：crash 阶段 bash 被审批/工具策略门控，杀进程时工具尚未真正执行；已验的是真实进程 kill、result-unknown 横幅、确认前后副作用 0、不重跑（`T30/report.md` §7/§9.3）。不得表述为“工具产生副作用后被中断”。
+6. **PASS-with-caveat（T38 必须显式确认）**：A1 权限弹窗序列、A5 进程级隐私 relaunch、D5 真实 image/PDF PDFKit、D7 系统 Files picker、F1 四跳单流程、F2 真实不可达端口；以及 AC D2-01-AC2、D1-02-AC1、D3-02-AC3、D3-06-AC3、D4-05-AC1、D4-07-AC2、D9-01-AC1/AC2/AC3、D1-09-AC2、D1-10-AC3 的 L4/L5 子面。
+7. **T38 仍需补的真实 L4**：D4-03-AC2（真实本机引擎内容索引搜索）、PERSIST-01-AC4（真实引擎 exit 70 崩溃恢复）。这两行不是 T32/T34b 能关闭的，已标 PENDING-T38。
+8. **T41 仍待跑**：G4 的 v1.1 `verify.sh --full` release/unsigned 构建（旧 T22b 证据为 94.5s / 227.1MB，仅作参考）；`--full/--real/--remote` 全量门也由 T41 最终执行。
+9. **TTFT 仍未测**：T35a 明确把真实模型首 token 留给 T32/T37，但 T32 日志尚无结果、T37 未跑模型；它不在 44 步/70 AC 的表格行内，但 G-18 不能据此宣称已闭环。T38/T41 需补测或由 Lead 记录为 Phase-1-out。
+
+---
+
+T37 生成（2026-11-13）。所有 PASS 均可由本文件列出的命令与日志路径复跑；未执行项不以推断代替。

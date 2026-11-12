@@ -518,24 +518,31 @@ extension ProvidersApi on DshClient {
   /// so fields this client does not model (`compat`, retry policy) stay as
   /// they are. [models] replaces the whole list; [headers] replaces the whole
   /// `headers` map, so an empty map removes every custom request header.
-  /// Passing null for a field leaves it untouched.
+  /// Passing null for a field leaves it untouched. [clearApiKeyEnv] removes
+  /// the route's credential reference (a keyless route), which null cannot
+  /// express.
   Future<ProviderSettings> updateProvider(
     String route, {
     String? displayName,
     ProviderApi? api,
     String? baseUrl,
     String? apiKeyEnv,
+    bool clearApiKeyEnv = false,
     List<ProviderModelSpec>? models,
     Map<String, String>? headers,
     int? expectedRevision,
   }) async {
     _checkRoute(route);
+    if (clearApiKeyEnv && apiKeyEnv != null) {
+      throw ArgumentError('apiKeyEnv and clearApiKeyEnv are mutually exclusive');
+    }
     List<String> at(String field) => ['providers', route, field];
     final ops = [
       if (displayName != null) SettingsOp.set(at('displayName'), displayName),
       if (api != null) SettingsOp.set(at('api'), api.wire),
       if (baseUrl != null) SettingsOp.set(at('baseURL'), baseUrl),
       if (apiKeyEnv != null) SettingsOp.set(at('apiKeyEnv'), apiKeyEnv),
+      if (clearApiKeyEnv) SettingsOp.unset(at('apiKeyEnv')),
       if (models != null) SettingsOp.set(at('models'), [for (final m in models) m.toJson()]),
       if (headers != null) SettingsOp.set(at('headers'), headers),
     ];

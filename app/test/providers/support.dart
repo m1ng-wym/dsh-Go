@@ -70,6 +70,7 @@ class FakeProviderBackend implements ProviderBackend {
   Object? discoverError;
   Object? Function(String? baseUrl)? discoverFor;
   Object? storeKeyError;
+  Object? removeError;
 
   final calls = <(String, Map<String, Object?>)>[];
   final _changes = StreamController<void>.broadcast();
@@ -122,6 +123,7 @@ class FakeProviderBackend implements ProviderBackend {
     ProviderApi? api,
     String? baseUrl,
     String? apiKeyEnv,
+    bool clearApiKeyEnv = false,
     List<ProviderModelSpec>? models,
     Map<String, String>? headers,
     int? expectedRevision,
@@ -134,6 +136,7 @@ class FakeProviderBackend implements ProviderBackend {
         'api': ?api?.wire,
         'baseURL': ?baseUrl,
         'apiKeyEnv': ?apiKeyEnv,
+        if (clearApiKeyEnv) 'clearApiKeyEnv': true,
         if (models != null) 'models': [for (final m in models) m.toJson()],
         'headers': ?headers,
         'expectedRevision': ?expectedRevision,
@@ -146,7 +149,7 @@ class FakeProviderBackend implements ProviderBackend {
       displayName: displayName ?? old.displayName,
       api: api?.wire ?? old.api,
       baseUrl: baseUrl ?? old.baseUrl,
-      apiKeyEnv: apiKeyEnv ?? old.apiKeyEnv,
+      apiKeyEnv: clearApiKeyEnv ? null : (apiKeyEnv ?? old.apiKeyEnv),
       models: models ?? old.models,
       headers: headers ?? old.headers,
       modelOverrides: old.modelOverrides,
@@ -222,6 +225,7 @@ class FakeProviderBackend implements ProviderBackend {
   @override
   Future<ProviderSettings> remove(String id, {int? expectedRevision}) async {
     calls.add(('remove', {'id': id, 'expectedRevision': ?expectedRevision}));
+    if (removeError case final error?) throw error;
     profiles.removeWhere((p) => p.route == id);
     revision++;
     return _settings;

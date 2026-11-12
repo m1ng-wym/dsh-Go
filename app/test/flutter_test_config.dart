@@ -12,6 +12,7 @@ import 'package:dsh_app/state/locale_state.dart';
 import 'package:dsh_app/ui/chat/empty_actions.dart' show tipStart;
 
 import 'support/english_preview.dart';
+import 'support/platform_goldens.dart';
 import 'support/quiet_performance.dart';
 import 'support/test_fonts.dart';
 
@@ -30,6 +31,10 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // tests opt in with AppLocale.use(AppLocale.en) + an English MaterialApp.
   AppLanguageController.initial = AppLanguage.zh;
   AppLocale.use(AppLocale.zhCN);
+  // macOS renders different pixels than the Linux baselines: compare there
+  // against goldens/macos/. English preview wraps this comparator (it is a
+  // LocalFileComparator) and still redirects every write to DSH_TEST_GOLDEN_OUT.
+  setUpPlatformGoldens();
   setUpEnglishPreview();
   await testMain();
 }

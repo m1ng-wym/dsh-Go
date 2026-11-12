@@ -328,6 +328,21 @@ void main() {
       ], reason: 'a field this call does not name is not part of the mutate');
     });
 
+    test('updateProvider can remove a keyless route’s credential reference', () async {
+      final client = await connect();
+      await client.updateProvider('custom-mygw', clearApiKeyEnv: true);
+      expect(mutations.single['ops'], [
+        {
+          'op': 'unset',
+          'path': ['providers', 'custom-mygw', 'apiKeyEnv'],
+        },
+      ], reason: 'null means untouched; clearing the reference needs an explicit unset');
+      expect(
+        () => client.updateProvider('custom-mygw', apiKeyEnv: 'CUSTOM_MYGW_API_KEY', clearApiKeyEnv: true),
+        throwsArgumentError,
+      );
+    });
+
     test('saveProvider carries headers on create', () async {
       await (await connect()).saveProvider(
         const ProviderProfile(

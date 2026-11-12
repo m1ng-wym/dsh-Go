@@ -346,7 +346,7 @@ void main() {
       ]);
     });
 
-    testWidgets('a key the engine refuses leaves the form open, now editing', (tester) async {
+    testWidgets('a refused key rolls the new route back, keeps the form and retries create', (tester) async {
       final backend = FakeProviderBackend(discoverResult: discovered)
         ..storeKeyError = const ProviderFailure('引擎的启动环境已提供这个 Key，无法在这里修改');
       await _open(tester, backend);
@@ -359,13 +359,22 @@ void main() {
       await settle(tester);
       await tester.tap(find.text('保存'));
       await settle(tester);
-      expect(find.textContaining('渠道已保存，Key 没有存上'), findsOneWidget);
-      expect(find.text('编辑渠道'), findsWidgets);
+      // The profile write is compensated, so there is no saved route to edit:
+      // the form stays on 添加渠道 and the typed key is still in place.
+      expect(find.textContaining('没能保存'), findsOneWidget);
+      expect(find.text('添加渠道'), findsWidgets);
+      expect(backend.profiles, isEmpty);
+      expect(backend.stored, isEmpty);
+      expect(tester.widget<TextField>(_field('API Key')).controller!.text, 'sk-1');
 
       backend.storeKeyError = null;
       await tester.tap(find.text('保存'));
       await settle(tester);
-      expect(backend.callNames.where((c) => c != 'read' && c != 'storeKey'), ['create', 'update']);
+      expect(backend.callNames, contains('remove'), reason: 'the failed route was rolled back');
+      expect(backend.callNames.where((c) => const {'read', 'storeKey', 'remove', 'clearKey'}.contains(c) == false), [
+        'create',
+        'create',
+      ]);
       expect(backend.stored['CUSTOM_GW_EXAMPLE_API_KEY'], 'sk-1');
     });
   });

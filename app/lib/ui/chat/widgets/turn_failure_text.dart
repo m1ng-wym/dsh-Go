@@ -21,6 +21,9 @@ String turnFailureText(String? code) => switch (code) {
   'EMPTY_RESPONSE' => appL10n.chatErrModelEmpty,
   // The engine is on the phone (updated with the app) or on the remote host.
   'CLIENT_UPGRADE_REQUIRED' => appL10n.chatErrEngineOutdated,
+  // The route/model this session selected is no longer configured; the send
+  // path falls back to another available model.
+  'UNKNOWN_MODEL' => appL10n.chatErrModelUnsupported,
   'MODEL_UNSUPPORTED' => appL10n.chatErrModelUnsupported,
   'UNSUPPORTED_REASONING_EFFORT' => appL10n.chatErrReasoningEffortUnsupported,
   _ => appL10n.chatErrTurn,

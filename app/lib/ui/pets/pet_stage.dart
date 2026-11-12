@@ -831,6 +831,10 @@ class PetLayerState extends ConsumerState<PetLayer> with TickerProviderStateMixi
     final prefs = ref.watch(petPrefsProvider);
     final pet = ref.watch(petScopedStateProvider(_scope));
     ref.watch(uiModeProvider.select((m) => m.web));
+    // A card waiting on this page owns the bottom of the screen. The pet still
+    // stands and draws there, but it must not swallow a tap meant for the
+    // card's buttons: the approval / question card is the primary control.
+    final waiting = ref.watch(petFocusProvider.select((focus) => focus?.waitingKey != null));
     // A new state (or the pack just arrived): arm what goes with it.
     if (pet.state != _lastState || !identical(pack, _statePack)) {
       _lastState = pet.state;
@@ -896,7 +900,7 @@ class PetLayerState extends ConsumerState<PetLayer> with TickerProviderStateMixi
       showWhenUnlinked: false,
       offset: origin,
       child: IgnorePointer(
-        ignoring: !shown,
+        ignoring: !shown || waiting,
         child: AnimatedOpacity(
           opacity: shown ? 1 : 0,
           duration: fadeDuration,

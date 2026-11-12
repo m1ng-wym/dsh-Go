@@ -266,17 +266,20 @@ void main() {
       expect(container.read(settingsProvider).customProviderIds, isEmpty);
     });
 
-    test('a failed key write reports the id that was saved', () async {
-      container = start(FakeProviderBackend()..storeKeyError = const DshRemoteException('credential/rejected', 'x'));
+    test('a failed key write rolls the new route back and reports it', () async {
+      final backend = FakeProviderBackend()..storeKeyError = const DshRemoteException('credential/rejected', 'x');
+      container = start(backend);
       await container.read(customProvidersProvider.future);
       await expectLater(
         container.read(providerActionsProvider).save(draft),
         throwsA(
           isA<ProviderFailure>()
-              .having((f) => f.savedId, 'savedId', 'custom-my-gateway')
-              .having((f) => f.message, 'message', contains('Key 没有存上')),
+              // The route is gone again, so the form must not switch to it.
+              .having((f) => f.savedId, 'savedId', isNull)
+              .having((f) => f.message, 'message', contains('没能保存')),
         ),
       );
+      expect(backend.profiles, isEmpty);
       expect(vault.data, isEmpty);
     });
 

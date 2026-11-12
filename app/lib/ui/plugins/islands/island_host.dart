@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart' show SchedulerBinding, SchedulerPhase;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -292,7 +293,20 @@ final islandHostProvider = Provider<IslandHost>((ref) {
 /// rebuilt whenever the pool changes.
 final liveIslandBudgetProvider = Provider<IslandBudget>((ref) {
   final host = ref.watch(islandHostProvider);
-  void changed() => ref.invalidateSelf();
+  // IslandView reports visibility from didChangeDependencies, i.e. while the
+  // tree is building (every route change does this for a mounted island).
+  // Invalidating this provider right there asks the ProviderScope to rebuild
+  // during build, which Flutter rejects; take the refresh after the frame.
+  void changed() {
+    final scheduler = SchedulerBinding.instance;
+    if (scheduler.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      scheduler.addPostFrameCallback((_) {
+        if (ref.mounted) ref.invalidateSelf();
+      });
+      return;
+    }
+    ref.invalidateSelf();
+  }
   host.addListener(changed);
   ref.onDispose(() => host.removeListener(changed));
   final active = ref.watch(activeHostProvider);
