@@ -27,13 +27,13 @@ const kColdStartVerifyReply = 'T30-VERIFY-REPLY-4B7';
 
 /// The seed turn asks for the file and the reply marker; the tool instruction
 /// is explicit so the turn exercises a real tool call, not only text.
-const kColdStartSeedPrompt = 'T30 cold-start seed. Use the write tool to create the workspace file '
+const kColdStartSeedPrompt =
+    'T30 cold-start seed. Use the write tool to create the workspace file '
     '`$kColdStartWorkspaceFile` with exactly this one line: $kColdStartWorkspaceMarker\n'
     'After the tool succeeds, reply with exactly this one line: $kColdStartSeedReply\n'
     'Do not use bash, and do not create any other file.';
 
-const kColdStartVerifyPrompt =
-    'T30 cold-start verify. Reply with exactly this one line: $kColdStartVerifyReply';
+const kColdStartVerifyPrompt = 'T30 cold-start verify. Reply with exactly this one line: $kColdStartVerifyReply';
 
 /// An unsent composer draft: text and one small real PNG attachment.
 const kColdStartDraftText = 'T30-COLD-START-DRAFT-3D8 这条草稿还没有发送';
@@ -43,11 +43,26 @@ const kColdStartDraftAttachment = 't30-draft.png';
 const kColdStartCrashProviderName = 'T30 Crash Mock';
 const kColdStartCrashModel = 't30-crash-model';
 const kColdStartCrashKey = 'sk-t30-crash-mock';
+
+/// Pinned before the first prompt so automatic titling cannot append an event
+/// between the tool call and the lifecycle's exact-prefix read (a real race:
+/// the title LLM response can otherwise land inside that window).
+const kColdStartCrashTitle = 'T30 crash session';
+const kColdStartCrashDescription = 'T30 slow crash tool (writes the side-effect file, then sleeps)';
 const kColdStartCrashPrompt = 'T30 crash turn: run the slow command.';
 const kColdStartCrashCountFile = 't30-crash-count.txt';
 const kColdStartCrashExecuted = 'T30-CRASH-EXECUTED';
 const kColdStartCrashDone = 'T30-CRASH-DONE';
-const kColdStartCrashCommand = 'echo $kColdStartCrashExecuted >> $kColdStartCrashCountFile; '
+
+/// A real-model turn in the recovered session after the user acknowledges the
+/// unknown result: the session is usable again, in the same transcript.
+const kColdStartCrashContinueReply = 'T30-CRASH-CONTINUE-2C9';
+const kColdStartCrashContinuePrompt =
+    'T30 crash recovery continuation. The previous slow bash command '
+    'was interrupted and its outcome is unknown; do not retry it and do not use any tools. '
+    'Reply with exactly this one line: $kColdStartCrashContinueReply';
+const kColdStartCrashCommand =
+    'echo $kColdStartCrashExecuted >> $kColdStartCrashCountFile; '
     'sleep 60; echo $kColdStartCrashDone >> $kColdStartCrashCountFile';
 
 /// The foreground bash call needs a timeout longer than the kill window; the
@@ -210,11 +225,7 @@ class ColdStartCrashRecord {
 /// The workspace text as the engine's file API sees it, or null when missing.
 String? crashCountLines(String? text) {
   if (text == null) return null;
-  final lines = text
-      .split('\n')
-      .map((line) => line.trim())
-      .where((line) => line.isNotEmpty)
-      .toList();
+  final lines = text.split('\n').map((line) => line.trim()).where((line) => line.isNotEmpty).toList();
   return lines.join('\n');
 }
 

@@ -319,6 +319,33 @@ run_crash_phase() {
   screenshot "crash-cold-launch"
   record_processes "cold-launch-$phase"
   wait_marker "$EVIDENCE/$phase.log" "[cold-start-e2e] CRASH-READY-TO-KILL" "$PHASE_TIMEOUT"
+  local ready
+  ready="$(grep -F -- '[cold-start-e2e] CRASH-READY-TO-KILL' "$EVIDENCE/$phase.log" | tail -n 1)"
+  # The kill is only a mid-turn kill when a bash call was really dispatched,
+  # had already produced its side effect, and had not returned. An engine that
+  # closed the turn itself (synthetic unknown while the app is alive) prints a
+  # different marker and must never be accepted as process-level recovery.
+  case "$ready" in
+    *reason=tool-in-flight*) ;;
+    *) fail "crash phase did not prove a dispatched tool in flight: $ready" ;;
+  esac
+  case "$ready" in
+    *name=bash*) ;;
+    *) fail "crash phase did not name the dispatched bash tool: $ready" ;;
+  esac
+  case "$ready" in
+    *phase=dispatch*dispatchActive=true*) ;;
+    *) fail "crash phase did not prove a live bash dispatch: $ready" ;;
+  esac
+  case "$ready" in
+    *returned=false*) ;;
+    *) fail "crash phase's bash call had already returned before the kill: $ready" ;;
+  esac
+  case "$ready" in
+    *count=*T30-CRASH-EXECUTED*) ;;
+    *) fail "crash phase never observed the bash side effect: $ready" ;;
+  esac
+  e2e_log "crash marker verified: $ready"
   local elapsed=$(( $(date +%s) - PHASE_STARTED ))
   screenshot "crash-mid-turn"
   e2e_log "crash phase dispatched a slow tool after ${elapsed}s; killing the app mid-turn"
