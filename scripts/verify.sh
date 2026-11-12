@@ -25,7 +25,7 @@
 #                   -skip-testing) + all 27 golden-bearing files (macOS baselines
 #                   via the platform comparator) + L4 integration_test/phase1_test.dart
 #                   on iPhone 17 Pro & iPhone SE3 (canonical mock model) +
-#                   Phase1UITests (installed Runner.app, 17 Pro) + build
+#                   Phase1UITests smoke (17 Pro) + T34b process flows via their wrapper + build
 #                   (simulator + device unsigned) + official engine smoke. The iSH
 #                   archive check is NOT part of --full; no --allow-skip is needed.
 #   --real   : real opencode-go model via the loopback credential broker:
@@ -689,8 +689,15 @@ if mode_in full || [ "$MODE" = "list" ]; then
     'cd app && test -n "$IOS_SIM_17PRO" || { echo "FAIL: iPhone 17 Pro simulator not found (set DSH_SIM_17PRO)"; exit 1; }; xcrun simctl bootstatus "$IOS_SIM_17PRO" -b >/dev/null; xcrun simctl install "$IOS_SIM_17PRO" build/ios/iphonesimulator/Runner.app; for svc in all reminders contacts contacts-limited calendar location location-always photos siri; do xcrun simctl privacy "$IOS_SIM_17PRO" grant "$svc" io.github.ccch1mneyyy.dshgo || exit 1; done; xcrun simctl location "$IOS_SIM_17PRO" set 31.2304,121.4737; DSH_IOS_GUEST_BUILD=0 xcodebuild test -workspace ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,id=$IOS_SIM_17PRO" -only-testing:RunnerTests -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO'
   # Phase1UITests launches the real installed Runner.app by bundle identifier and
   # covers the process-level cold-launch/relaunch path (T34a).
-  run_step_need_cmd full "Phase1UITests (process-level, installed Runner.app)" xcodebuild \
-    'cd app && test -n "$IOS_SIM_17PRO" || { echo "FAIL: iPhone 17 Pro simulator not found (set DSH_SIM_17PRO)"; exit 1; }; xcrun simctl bootstatus "$IOS_SIM_17PRO" -b >/dev/null; xcrun simctl install "$IOS_SIM_17PRO" build/ios/iphonesimulator/Runner.app; xcodebuild test -workspace ios/Runner.xcworkspace -scheme Phase1UITests -destination "platform=iOS Simulator,id=$IOS_SIM_17PRO" CODE_SIGNING_ALLOWED=NO'
+  # T34a smoke cases are self-contained on a clean 17 Pro destination.
+  run_step_need_cmd full "Phase1UITests (smoke: launch + cold relaunch, installed Runner.app)" xcodebuild \
+    'cd app && test -n "$IOS_SIM_17PRO" || { echo "FAIL: iPhone 17 Pro simulator not found (set DSH_SIM_17PRO)"; exit 1; }; xcrun simctl bootstatus "$IOS_SIM_17PRO" -b >/dev/null; xcrun simctl install "$IOS_SIM_17PRO" build/ios/iphonesimulator/Runner.app; xcodebuild test -workspace ios/Runner.xcworkspace -scheme Phase1UITests -destination "platform=iOS Simulator,id=$IOS_SIM_17PRO" CODE_SIGNING_ALLOWED=NO -only-testing:Phase1UITests/Phase1UITests/testAppLaunches -only-testing:Phase1UITests/Phase1UITests/testColdRelaunchSkeleton'
+  # T34b process flows need per-flow orchestration (appearance/language/Photos
+  # media/SE3 destination), which lives in the committed wrapper; running the
+  # raw suite gives false failures (dark mode/SE3 assertions on the wrong
+  # destination).
+  run_step full "Phase1UITests (T34b process flows, wrapper-orchestrated)" "scripts/e2e/ios/run_ui_process.sh" \
+    'bash scripts/e2e/ios/run_ui_process.sh --tag green'
   run_step full "integration_test phase1 (iPhone 17 Pro, canonical mock)" "app/integration_test/phase1_test.dart" \
     'bash app/integration_test/run_phase1_e2e.sh --device "${IOS_SIM_17PRO:-iPhone 17 Pro}"'
   run_step full "integration_test phase1 (iPhone SE3, canonical mock)" "app/integration_test/phase1_test.dart" \
