@@ -32,6 +32,8 @@ import 'package:dsh_app/state/providers_state.dart';
 import 'package:dsh_app/state/sessions_state.dart';
 import 'package:dsh_app/state/workspaces_state.dart';
 import 'package:dsh_app/ui/chat/chat_list.dart';
+import 'package:dsh_app/ui/chat/render/ansi_text.dart';
+import 'package:dsh_app/ui/chat/render/code_block.dart';
 import 'package:dsh_app/ui/chat/composer.dart';
 import 'package:dsh_app/ui/chat/widgets/tool_row.dart';
 import 'package:dsh_app/ui/chat/widgets/turn_process.dart';
@@ -207,20 +209,15 @@ void main() {
     _log('final answer visible in the chat; snippet="$finalSnippet"');
 
     // Visible transcript: expand any folded process and the relevant tool rows.
-    await _revealToolRows(tester, sessionId, container, wcTool: wcTool, readTool: readBackTool);
-
     final wcOut = _firstNonEmptyLine(wcTool.resultText);
-    await _waitFor(
+    await _revealToolRows(
       tester,
-      'the wc -l result in the transcript',
-      () => find.textContaining(wcOut, findRichText: true).evaluate().isNotEmpty,
-      timeout: const Duration(seconds: 30),
-    );
-    await _waitFor(
-      tester,
-      'the read-back first line in the transcript',
-      () => find.textContaining(firstLineText, findRichText: true).evaluate().isNotEmpty,
-      timeout: const Duration(seconds: 30),
+      sessionId,
+      container,
+      wcTool: wcTool,
+      readTool: readBackTool,
+      wcOutput: wcOut,
+      firstLineText: firstLineText,
     );
     _log('transcript shows tool rows, wc output and the first line');
 
@@ -450,6 +447,8 @@ Future<void> _revealToolRows(
   ProviderContainer container, {
   required ToolChatItem wcTool,
   required ToolChatItem readTool,
+  required String wcOutput,
+  required String firstLineText,
 }) async {
   // A finished turn folds its process open first, then collapses to a summary.
   await Future<void>.delayed(const Duration(seconds: 4));
@@ -491,9 +490,17 @@ Future<void> _revealToolRows(
       fail('cannot tap $what: not found');
     }
     try {
-      await tester.ensureVisible(finder);
+      // Centre it in the viewport: a row clipped at the top would put the
+      // widget's centre above the visible area and the tap would miss.
+      // No animation: an awaited animated ensureVisible would wait for frames
+      // that only the test can pump.
+      await Scrollable.ensureVisible(finder.evaluate().last, alignment: 0.5);
       await tester.pump();
-      await tester.tap(finder, warnIfMissed: false);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await tester.pump();
+      final rect = tester.getRect(finder);
+      _log('tapping $what at ${rect.center.dx.toStringAsFixed(0)},${rect.center.dy.toStringAsFixed(0)}');
+      await tester.tapAt(rect.center);
     } on StateError {
       // The lazy list rebuilt between finding the row and hitting it; the
       // caller scrolls and retries.
@@ -527,8 +534,19 @@ Future<void> _revealToolRows(
   }
   expect(hasToolRows, isTrue, reason: 'the chat UI exposes no expandable tool row for the real turn');
 
-  Future<void> expand(ToolChatItem target, String what) async {
-    for (var attempt = 0; attempt < 3; attempt++) {
+  // The tool row defaults to collapsed; its expanded detail renders the
+  // command output as AnsiText and a read window as a CodeBlock. Check the
+  // rendered widgets, not only the raw transcript text nodes.
+  bool wcRendered() =>
+      find.textContaining(wcOutput, findRichText: true).evaluate().isNotEmpty ||
+      tester.widgetList<AnsiText>(find.byType(AnsiText)).any((widget) => widget.text.contains(wcOutput));
+  bool readRendered() =>
+      find.textContaining(firstLineText, findRichText: true).evaluate().isNotEmpty ||
+      tester.widgetList<CodeBlock>(find.byType(CodeBlock)).any((widget) => widget.code.contains(firstLineText));
+
+  Future<void> expand(ToolChatItem target, String what, bool Function() rendered) async {
+    for (var attempt = 0; attempt < 6; attempt++) {
+      if (rendered()) return;
       final rows = tester.widgetList<ToolRow>(find.byType(ToolRow)).toList();
       final index = rows.indexWhere((row) => identical(row.item, target));
       if (index < 0) {
@@ -536,17 +554,18 @@ Future<void> _revealToolRows(
         continue;
       }
       await tapNow(find.byType(ToolRow).at(index), what);
-      if (find.byType(ToolRow).evaluate().isNotEmpty) return;
+      if (rendered()) return;
       await nudge();
     }
-    fail('$what: its tool row is not in the transcript');
+    if (!rendered()) fail('$what: its result never became visible in the transcript');
   }
 
-  // The tool row defaults to collapsed; tap it so the result text is on screen.
-  await expand(wcTool, 'the wc tool row');
-  if (readTool != wcTool) await expand(readTool, 'the read-back tool row');
+  await expand(wcTool, 'the wc tool row', wcRendered);
+  if (readTool != wcTool) await expand(readTool, 'the read-back tool row', readRendered);
   await Future<void>.delayed(const Duration(milliseconds: 400));
   await tester.pump();
+  expect(wcRendered(), isTrue, reason: 'the wc command output is not rendered in the transcript');
+  expect(readRendered(), isTrue, reason: 'the read-back first line is not rendered in the transcript');
   expect(container.read(chatProvider(sessionId)).items.whereType<ToolChatItem>(), isNotEmpty);
 }
 
