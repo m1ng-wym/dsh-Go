@@ -10,8 +10,10 @@
 
 | 范围 | PASS | FAIL | PENDING-T32 | PENDING-T34b | PENDING-T38 | PENDING-T41 | Phase-1-out | 合计 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 44 个验收步骤 | 29 | 0 | 6 | 8 | 0 | 1 | 0 | 44 |
-| 70 条 AC | 57 | 0 | 8 | 3 | 2 | 0 | 0 | 70 |
+| 44 个验收步骤（T37 初版） | 29 | 0 | 6 | 8 | 0 | 1 | 0 | 44 |
+| **44 个验收步骤（T38 收口后，见 §5）** | **41** | **2** | **0** | **0** | **0** | **1** | **0** | **44** |
+| 70 条 AC（T37 初版） | 57 | 0 | 8 | 3 | 2 | 0 | 0 | 70 |
+| **70 条 AC（T38 收口后，见 §5）** | **67** | **1** | **0** | **0** | **2** | **0** | **0** | **70** |
 
 PASS 行 = 有实际命令 + 日志/截图 + 设备 + 构建 SHA。PENDING 行 = 已列出“已有证据 + 缺什么 + 由哪个任务关闭”。
 
@@ -182,3 +184,15 @@ PASS 行 = 有实际命令 + 日志/截图 + 设备 + 构建 SHA。PENDING 行 =
 ---
 
 T37 生成（2026-11-13）。所有 PASS 均可由本文件列出的命令与日志路径复跑；未执行项不以推断代替。
+
+## 5. T38 收口更新（2026-11-13，覆盖 §4 中已过时的 T32/T30 说明）
+
+1. **T32 已 PASS/已提交**（supersedes §4.1）：commit `b6bdddcf72669a0dbc3442990b65ff41cb11a5ae`，真实模型 run `03:43 +1 All tests passed!`、`ALL FEATURES PASSED in 222s`、22 次 provider 请求（<25），clone `225505B1-…`。逐项：C4 steer（seq 24/28，不中断）、C5 queue/withdraw（QUEUED_OK 恰好一次，seq 34）、C6 stop（57 字符后停止，保留 2099，CONTINUE_OK）、C9 bash `printf 'tool-row-ok'` 工具行命令+输出、C10 copy/quote/regenerate fork（源会话 18 项不变）、C11 提问卡 [A,B] 提交 A 后模型继续（第 8 轮）。证据：`reports/phase1-completion/T32/green/chat_features_real.log` + `.env.json` + `screenshots/{steer,stop,tool,actions,question}.png`、`T32/report.md`。**C4/C5/C6/C9/C10/C11 及 8 条 AC 翻 PASS。**
+2. **T34b 已提交、7/8 流程 PASS**：commit `1b1bdcaff05a52ec431e47f2c620fcd19a4881db`（`Phase1UITests.swift` + `run_ui_process.sh`）。PASS：A2/B5 冷启动与自动启动开关、B2 安装续装（23% 中断→Retry 继续到完成）、B6 失败诊断（可读原因/重试/日志入口；finding：日志卡 0 行）、B7 日志页（无凭据形状，`token=•••`，复制 369 字节 pasteboard 校验）、G1 深色（mean luma 0.0495）、G2 中→英（开始→Start，恢复语言）、SE3（375pt，深色 0.0455）。证据：`reports/phase1-completion/T34b/{report.md,green,red,screenshots}`。
+3. **D6/D8 仍 FAIL（阻塞于真实产品缺陷）**：模型弹层已修（见下），但 attach 面板的 `+` 按钮被宠物层（whale）遮挡，物理点击无法打开面板；T34b run 报 “The Photos entry is missing from the attach panel”（`reports/phase1-completion/T34b/green/photos-d6-fix/xcodebuild.log`）。因此 **D6、D8 记 FAIL**，AC `D4-07-AC1` 记 FAIL；不以 mock 或改断言绕过。
+4. **产品修复（真实缺陷）**：`app/lib/ui/chat/model_sheet.dart` 选择“无思考档位”的模型后弹层现在会关闭（此前选择后弹层不消失，挡住 composer）；有思考档位的模型仍保留弹层供选档位。回归 `app/test/chat/model_sheet_test.dart` 25/25；commit `49468ccd`。宠物层遮挡 attach/composer 的问题仍在，是 D6/D8 的根因。
+5. **T30 crash 口径更新（supersedes §4.5）**：已改为真实 mid-turn kill（bash `phase=dispatch`、`dispatchActive=true`、`returned=false`、side effect `T30-CRASH-EXECUTED`，host 杀 pid 24364）；冷启动 `result-unknown`、`TOOL_OUTCOME_UNKNOWN`、横幅、无重跑、真实模型继续轮次。证据：`T30/run-strong-final.log`（591s，5/5）、`run-final-4.log`、`T30/report.md`。
+6. **T38 独立 verifier 修复**：`--fast` 的官方 guest fixture 在本地 `DSH_IOS_GUEST_BUILD=0` 环境泄漏下失败，已在 `scripts/verify.sh` 固定 `DSH_IOS_GUEST_BUILD=1`（commit `28d6770e`），随后 `--fast` 13/0/0。`--full` 的 Phase1UITests 步骤已拆为 T34a smoke + T34b 专用 wrapper（commit 见 verify.sh），避免对裸 suite 误报；`--full` 仍需在最终树上重跑确认。
+7. **未闭合**：`D4-03-AC2`、`PERSIST-01-AC4` 仍 PENDING-T38（真实本机内容索引、真实引擎 exit 70）；`G4` PENDING-T41（最终 `--full` 重跑）；`--real`/`--remote` 整体门未执行（组件 wrapper 均已各自 PASS，但整组 fail-closed 门未跑）。
+
+**结论：T32/T34b 的任务层证据已落地；D6/D8 因真实产品缺陷 FAIL，Phase 1 v1.1 仍不满足全部 DoD，不创建 `phase1-v1.1` tag。**
