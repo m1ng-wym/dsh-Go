@@ -13,6 +13,8 @@
 
 > 复选框保持 `[ ]`，以配合 `tooling/docs/check_phase1_spec.py` 的 44 步计数；本轮状态以每行行内 `状态：` 为准（PASS 27 / PENDING-T32 6 / PENDING-T34b 10 / PENDING-T41 1）。
 
+> 复选框保持 `[ ]`，以配合 `tooling/docs/check_phase1_spec.py` 的 44 步计数；本轮状态以每行行内 `状态：` 为准（PASS 27 / PENDING-T32 6 / PENDING-T34b 10 / PENDING-T41 1）。
+
 ## 0. 准备
 
 - [ ] 0.1 `repo` 已建（`phase1/base`/`phase1/integration`），HEAD 无未提交改动；记录 `git rev-parse HEAD`。
