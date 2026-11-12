@@ -216,7 +216,14 @@ final class Phase1UITests: XCTestCase {
       waitForButtonContaining(["Add image or file", "添加图片或文件"], app, 30),
       "The attach button is missing."
     )
-    sleep(2)
+    // Open the attach panel first: asserting the button exists is not enough.
+    let attach = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Add image or file")).firstMatch
+    if attach.exists {
+      attach.tap()
+    } else {
+      app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "添加图片或文件")).firstMatch.tap()
+    }
+    sleep(3)
     XCTAssertTrue(tapAny(["Photos", "相册"], app, 15), "The Photos entry is missing from the attach panel.")
     sleep(6)
     attachScreenshot("D6-photos-picker")
