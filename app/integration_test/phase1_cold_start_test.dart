@@ -95,11 +95,13 @@ Future<void> _seed(WidgetTester tester) async {
 
   _step('seed: first-run onboarding (the wrapper uninstalled the app)');
   final runtimeBefore = container.read(localRuntimeProvider).status;
-  _log('before onboarding: runtime phase=${runtimeBefore.phase.name} '
-      'installed=${runtimeBefore.installedVersion} bundled=${runtimeBefore.bundledVersion} '
-      'welcome=${find.byType(WelcomePage).evaluate().length} '
-      'connect=${find.byType(ConnectPage).evaluate().length} '
-      'home=${find.byType(HomeShell).evaluate().length}');
+  _log(
+    'before onboarding: runtime phase=${runtimeBefore.phase.name} '
+    'installed=${runtimeBefore.installedVersion} bundled=${runtimeBefore.bundledVersion} '
+    'welcome=${find.byType(WelcomePage).evaluate().length} '
+    'connect=${find.byType(ConnectPage).evaluate().length} '
+    'home=${find.byType(HomeShell).evaluate().length}',
+  );
   if (find.byType(WelcomePage).evaluate().isEmpty) _dumpTexts(tester);
   expect(find.byType(WelcomePage), findsOneWidget, reason: 'a clean install did not show the welcome page');
   await _finishOnboarding(tester);
@@ -146,7 +148,13 @@ Future<void> _seed(WidgetTester tester) async {
   final connection = container.read(activeConnectionProvider).value;
   expect(connection, isNotNull, reason: 'the app lost its local connection before reading the workspace');
   expect(connection!.client, isNotNull);
-  final stat = await _waitForWorkspaceFile(tester, container, sessionId, kColdStartWorkspaceFile, kColdStartWorkspaceMarker);
+  final stat = await _waitForWorkspaceFile(
+    tester,
+    container,
+    sessionId,
+    kColdStartWorkspaceFile,
+    kColdStartWorkspaceMarker,
+  );
   final absolute = stat.absolutePath;
   expect(absolute, isNotEmpty, reason: 'the engine did not report the workspace file path');
   expect(
@@ -158,7 +166,12 @@ Future<void> _seed(WidgetTester tester) async {
 
   _step('seed: unsent draft (typed text + one real attachment)');
   final field = _composerField();
-  await _waitFor(tester, 'composer in the seeded session', () => field.evaluate().isNotEmpty, timeout: const Duration(seconds: 60));
+  await _waitFor(
+    tester,
+    'composer in the seeded session',
+    () => field.evaluate().isNotEmpty,
+    timeout: const Duration(seconds: 60),
+  );
   await tester.enterText(field, kColdStartDraftText);
   await tester.pump();
   final attachment = DraftAttachment.sniff(kColdStartDraftAttachment, kColdStartDraftPng);
@@ -175,7 +188,11 @@ Future<void> _seed(WidgetTester tester) async {
   final prefs = await SharedPreferences.getInstance();
   final storedDrafts = prefs.getString(DraftStore.preferenceKey) ?? '';
   expect(storedDrafts, contains(kColdStartDraftText), reason: 'the draft text never reached SharedPreferences');
-  expect(storedDrafts, contains(kColdStartDraftAttachment), reason: 'the attachment name never reached SharedPreferences');
+  expect(
+    storedDrafts,
+    contains(kColdStartDraftAttachment),
+    reason: 'the attachment name never reached SharedPreferences',
+  );
   _log('draft stored: ${kColdStartDraftText.length} chars + ${attachment.size}B ${attachment.name}');
 
   _step('seed: record the fixed expectations for the next process');
@@ -229,7 +246,11 @@ Future<void> _verify(WidgetTester tester) async {
   final container = _container(tester);
   expect(find.byType(WelcomePage), findsNothing, reason: 'the cold launch showed onboarding again');
   expect(find.byType(ConnectPage), findsNothing, reason: 'the cold launch showed the connect step again');
-  expect(find.byKey(const ValueKey('runtime-option-local')), findsNothing, reason: 'the cold launch asked to choose a runtime');
+  expect(
+    find.byKey(const ValueKey('runtime-option-local')),
+    findsNothing,
+    reason: 'the cold launch asked to choose a runtime',
+  );
   _log('cold launch reached HomeShell without onboarding');
 
   final settings = container.read(settingsProvider);
@@ -281,7 +302,12 @@ Future<void> _verify(WidgetTester tester) async {
   _log('session persisted: ${record.sessionId} title="$title"');
 
   container.read(currentSessionProvider.notifier).select(record.sessionId);
-  await _waitFor(tester, 'the persisted chat opens', () => find.byType(Composer).evaluate().isNotEmpty, timeout: const Duration(minutes: 2));
+  await _waitFor(
+    tester,
+    'the persisted chat opens',
+    () => find.byType(Composer).evaluate().isNotEmpty,
+    timeout: const Duration(minutes: 2),
+  );
   await _waitForChat(tester, container, record.sessionId);
   final chat = container.read(chatProvider(record.sessionId));
   final users = chat.items.whereType<UserChatItem>().map((item) => item.text).toList();
@@ -295,7 +321,11 @@ Future<void> _verify(WidgetTester tester) async {
   expect(connection, isNotNull, reason: 'the app is not connected to the auto-started engine');
   final stat = await connection!.client.statFile(record.sessionId, record.workspaceFile);
   final workspaceText = await connection.client.readWorkspaceText(record.sessionId, record.workspaceFile);
-  expect(workspaceText.text.trim(), record.workspaceMarker, reason: 'the workspace file content changed across the cold launch');
+  expect(
+    workspaceText.text.trim(),
+    record.workspaceMarker,
+    reason: 'the workspace file content changed across the cold launch',
+  );
   // The Simulator may reissue the app's data container when it reinstalls the
   // bundle; the app relocates its storage and the Host reports the file under
   // the new root. The relative workspace location is what must not change.
@@ -304,11 +334,15 @@ Future<void> _verify(WidgetTester tester) async {
     '${LocalPaths.workspace}/${record.workspaceFile}',
     reason: 'the workspace file is not under the current workspace root',
   );
-  _log('workspace file persisted: ${stat.absolutePath} (${stat.bytes}B); '
-      'seed root was ${record.workspacePath}');
+  _log(
+    'workspace file persisted: ${stat.absolutePath} (${stat.bytes}B); '
+    'seed root was ${record.workspacePath}',
+  );
   if (stat.absolutePath != record.workspacePath) {
-    _log('the data container was reissued across the process boundary; the app relocated its storage '
-        '(seed=${record.workspacePath}, now=${stat.absolutePath})');
+    _log(
+      'the data container was reissued across the process boundary; the app relocated its storage '
+      '(seed=${record.workspacePath}, now=${stat.absolutePath})',
+    );
   }
 
   _step('verify: the restored draft is visible in the real composer');
@@ -336,7 +370,11 @@ Future<void> _verify(WidgetTester tester) async {
   await tester.pump();
   final before = container.read(currentSessionProvider);
   await _sendInCurrentSession(tester, container, prompt: kColdStartVerifyPrompt, marker: kColdStartVerifyReply);
-  expect(container.read(currentSessionProvider), before, reason: 'the new turn switched away from the persisted session');
+  expect(
+    container.read(currentSessionProvider),
+    before,
+    reason: 'the new turn switched away from the persisted session',
+  );
   final after = container.read(chatProvider(record.sessionId));
   expect(after.error, isNull, reason: 'the new real-model turn ended with an error: ${after.error}');
   expect(
@@ -396,8 +434,10 @@ Future<void> _autostartOff(WidgetTester tester) async {
           state.status.phase == RuntimePhase.starting ||
           state.status.phase == RuntimePhase.stopping ||
           state.status.phase == RuntimePhase.error) {
-        fail('auto-start off still changed the engine phase to ${state.status.phase.name} '
-            '(error=${state.status.error}); observed=$observed');
+        fail(
+          'auto-start off still changed the engine phase to ${state.status.phase.name} '
+          '(error=${state.status.error}); observed=$observed',
+        );
       }
       expect(state.status.baseUrl, isNull, reason: 'an auto-started engine exposed a base URL with auto-start off');
     }
@@ -406,8 +446,9 @@ Future<void> _autostartOff(WidgetTester tester) async {
   }
   final finalStatus = container.read(localRuntimeProvider).status;
   expect(observed, isNotEmpty, reason: 'the native runtime never reported a status');
-  expect(observed.toSet(), {RuntimePhase.installed.name},
-      reason: 'the engine was not left installed with auto-start off: $observed');
+  expect(observed.toSet(), {
+    RuntimePhase.installed.name,
+  }, reason: 'the engine was not left installed with auto-start off: $observed');
   expect(finalStatus.phase, RuntimePhase.installed, reason: 'auto-start off ended in ${finalStatus.phase.name}');
   expect(finalStatus.baseUrl, isNull);
   _log('auto-start off: engine never started for 25s; observed=$observed');
@@ -434,7 +475,12 @@ Future<void> _crash(WidgetTester tester) async {
   _step('crash: cold launch, real engine, mock provider, slow real tool turn');
   await LocalPaths.load();
   runApp(const ProviderScope(child: DshApp()));
-  await _waitFor(tester, 'home shell', () => find.byType(HomeShell).evaluate().isNotEmpty, timeout: const Duration(minutes: 4));
+  await _waitFor(
+    tester,
+    'home shell',
+    () => find.byType(HomeShell).evaluate().isNotEmpty,
+    timeout: const Duration(minutes: 4),
+  );
   final container = _container(tester);
   await _waitForAutoStart(tester, container);
   await _waitFor(
@@ -457,6 +503,16 @@ Future<void> _crash(WidgetTester tester) async {
   expect(presetCommand.success, isTrue, reason: 'the engine did not accept the full-access permission preset');
   final selected = await connection.client.setModel(sessionId, provider: providerId, model: kColdStartCrashModel);
   expect(selected.model, kColdStartCrashModel, reason: 'the crash session did not accept the deterministic mock model');
+  // Pin the title before the first prompt. Otherwise the automatic title LLM
+  // request can append `session/title` between the `tool/call` event and the
+  // lifecycle's exact-prefix read of that sequence, which the engine then
+  // rejects as a mismatch and closes as a synthetic unknown while the app is
+  // still alive. Pinning is the real user rename path; it removes that race so
+  // the slow call is really dispatched and the process boundary is the only
+  // thing that can interrupt it.
+  final pinned = await connection.client.renameSession(sessionId, kColdStartCrashTitle);
+  expect(pinned, kColdStartCrashTitle, reason: 'the crash session title could not be pinned');
+  _log('crash session title pinned: "$pinned"');
   // A bash command still asks on iOS even under full access (there is no real
   // sandbox backend); approving it is what lets the slow call be dispatched.
   container.read(chatProvider(sessionId).notifier).setAutoApprove(true);
@@ -475,13 +531,17 @@ Future<void> _crash(WidgetTester tester) async {
   _log('crash session $sessionId preset=danger-full-access (so the slow bash call is really dispatched)');
 
   container.read(currentSessionProvider.notifier).select(sessionId);
-  await _waitFor(tester, 'crash composer', () => find.byType(Composer).evaluate().isNotEmpty, timeout: const Duration(minutes: 2));
+  await _waitFor(
+    tester,
+    'crash composer',
+    () => find.byType(Composer).evaluate().isNotEmpty,
+    timeout: const Duration(minutes: 2),
+  );
   await _sendInCurrentSession(tester, container, prompt: kColdStartCrashPrompt, marker: '', waitForReply: false);
 
-  _step('crash: wait until the slow tool is in flight or its outcome is unknown');
+  _step('crash: wait until the slow tool is dispatched and in flight');
   LifecycleSnapshot? snapshot;
   LifecycleCall? dispatched;
-  ToolChatItem? engineUnknown;
   String? countText;
   var autoApproved = false;
   final wait = Stopwatch()..start();
@@ -492,9 +552,9 @@ Future<void> _crash(WidgetTester tester) async {
         // The crash session runs exactly one slow tool; its name comes from the
         // engine's tool registry, so the dispatch state is more reliable than a
         // hard-coded tool name.
-        if (call.active || call.dispatchActive || (!call.hasReturned && call.phase != 'prepared')) {
-          dispatched = call;
-        }
+        // `active` starts at prepared; only a recorded dispatch proves the tool
+        // was actually started (and the wrapper checks dispatchActive).
+        if (call.dispatchActive || call.phase == 'dispatch') dispatched = call;
       }
     } catch (error) {
       _log('lifecycle read while the tool runs failed (retrying): $error');
@@ -505,54 +565,114 @@ Future<void> _crash(WidgetTester tester) async {
       countText = null;
     }
     final chat = container.read(chatProvider(sessionId));
-    if (chat.error != null) fail('the crash turn failed before the tool was in flight: ${chat.error}');
-    // On iOS the bash tool's dispatch is gated behind an approval; when that
-    // gate ends without a durable result the engine records the call as an
-    // unknown outcome. That is the mid-turn interruption this phase needs.
-    engineUnknown = chat.items.whereType<ToolChatItem>().where((tool) {
+    if (chat.error != null) {
+      fail(
+        'the crash turn failed before the host killed the app: ${chat.error} '
+        '(lifecycle=${snapshot?.state.wire} calls=${_calls(snapshot)})',
+      );
+    }
+    final tools = chat.items.whereType<ToolChatItem>().toList();
+    final engineUnknown = tools.where((tool) {
       return tool.status == ToolStatus.failed &&
           (tool.failure?.code == 'TOOL_OUTCOME_UNKNOWN' || tool.failure?.name == 'ToolOutcomeUnknownError');
     }).firstOrNull;
-    final otherFailed = chat.items.whereType<ToolChatItem>().where((tool) {
-      return tool.status == ToolStatus.failed &&
-          tool.failure?.code != 'TOOL_OUTCOME_UNKNOWN' &&
-          tool.failure?.name != 'ToolOutcomeUnknownError';
-    }).toList();
-    if (otherFailed.isNotEmpty) {
-      final tool = otherFailed.first;
-      fail('the crash tool failed before dispatch: name=${tool.name} '
-          'failure=${tool.failure?.name}/${tool.failure?.code}/${tool.failure?.reason} '
-          'result=${tool.resultText} approval=${tool.approvalOutcome}');
+    if (engineUnknown != null) {
+      fail(
+        'the engine closed the interrupted call itself before the host killed the app '
+        '(name=${engineUnknown.name} approval=${engineUnknown.approvalOutcome} '
+        'result=${engineUnknown.resultText} lifecycle=${snapshot?.state.wire} calls=${_calls(snapshot)})',
+      );
     }
-    if (engineUnknown != null || (dispatched != null && (countText ?? '').contains(kColdStartCrashExecuted))) break;
+    final failed = tools.where((tool) => tool.status == ToolStatus.failed).toList();
+    if (failed.isNotEmpty) {
+      final tool = failed.first;
+      fail(
+        'the crash tool failed before the host killed the app: name=${tool.name} '
+        'failure=${tool.failure?.name}/${tool.failure?.code}/${tool.failure?.reason} '
+        'result=${tool.resultText} approval=${tool.approvalOutcome}',
+      );
+    }
+    final executed = (countText ?? '').contains(kColdStartCrashExecuted);
+    if ((countText ?? '').contains(kColdStartCrashDone)) {
+      fail(
+        'the slow tool finished before the host could kill the app '
+        '(side effect: ${(countText ?? '').trim()})',
+      );
+    }
+    if (dispatched != null && executed) {
+      // The side effect is proof the shell ran, but the snapshot above may have
+      // been read just before the durable dispatch record landed. Re-read it so
+      // the state this phase asserts on is the post-dispatch one.
+      try {
+        snapshot = await connection.client.getLifecycleStatus(sessionId, timeout: const Duration(seconds: 5));
+        for (final call in snapshot.calls) {
+          if (call.dispatchActive || call.active || call.phase == 'dispatch') dispatched = call;
+        }
+      } catch (error) {
+        _log('post-side-effect lifecycle read failed (keeping the last snapshot): $error');
+      }
+      break;
+    }
     if (chat.approvals.isNotEmpty && !autoApproved) {
       autoApproved = true;
       _log('crash approval pending for ${chat.approvals.map((a) => a.toolName).join(',')}; allowing it once');
       container.read(chatProvider(sessionId).notifier).setAutoApprove(true);
     }
     if (wait.elapsed.inSeconds % 5 == 0 && wait.elapsed.inMilliseconds % 1000 < 250) {
-      _log('crash poll: lifecycle=${snapshot?.state.wire} '
-          'calls=${snapshot?.calls.map((c) => '${c.identity.name}:${c.phase}:active=${c.active}:dispatch=${c.dispatchActive}').toList()} '
-          'running=${chat.running} approvals=${chat.approvals.map((a) => a.toolName).toList()} '
-          'tools=${chat.items.whereType<ToolChatItem>().map((t) => '${t.name}:${t.status.name}').toList()}');
+      _log(
+        'crash poll: lifecycle=${snapshot?.state.wire} calls=${_calls(snapshot)} '
+        'running=${chat.running} approvals=${chat.approvals.map((a) => a.toolName).toList()} '
+        'tools=${tools.map((t) => '${t.name}:${t.status.name}').toList()} '
+        'sideEffect=${(countText ?? '').trim()}',
+      );
     }
     await Future<void>.delayed(const Duration(milliseconds: 250));
     await tester.pump();
   }
-  if (engineUnknown == null) {
-    expect(dispatched, isNotNull,
-        reason: 'the slow call was never observed in flight and the engine recorded no unknown outcome; '
-            'lifecycle state=${snapshot?.state.wire} '
-            'calls=${snapshot?.calls.map((c) => '${c.identity.name}:${c.phase}:active=${c.active}').toList()}');
-    expect(countText, contains(kColdStartCrashExecuted), reason: 'the tool produced no workspace side effect before the kill');
-    expect(dispatched!.hasReturned, isFalse, reason: 'the slow tool already returned before the host could kill the app');
-    _log('tool in flight: name=${dispatched.identity.name} seq=${dispatched.identity.callSeq} '
-        'phase=${dispatched.phase} active=${dispatched.active} dispatchActive=${dispatched.dispatchActive}');
-  } else {
-    _log('engine recorded the interrupted tool as unknown: name=${engineUnknown.name} '
-        'failure=${engineUnknown.failure?.name}/${engineUnknown.failure?.code} '
-        'approval=${engineUnknown.approvalOutcome} lifecycle=${snapshot?.state.wire}');
-  }
+  final inflight = dispatched;
+  final liveSnapshot = snapshot;
+  expect(
+    inflight,
+    isNotNull,
+    reason:
+        'the slow call was never dispatched: lifecycle=${liveSnapshot?.state.wire} '
+        'calls=${_calls(liveSnapshot)} workspace=${(countText ?? '').trim()}',
+  );
+  expect(liveSnapshot, isNotNull, reason: 'the lifecycle snapshot disappeared before the kill');
+  expect(
+    countText,
+    contains(kColdStartCrashExecuted),
+    reason: 'the dispatched tool produced no workspace side effect before the kill',
+  );
+  expect(
+    countText,
+    isNot(contains(kColdStartCrashDone)),
+    reason: 'the slow tool finished before the host could kill the app',
+  );
+  if (inflight == null || liveSnapshot == null) fail('no in-flight lifecycle call/snapshot to kill');
+  expect(inflight.hasReturned, isFalse, reason: 'the slow tool returned before the host could kill the app');
+  expect(
+    inflight.identity.name,
+    'bash',
+    reason: 'the in-flight call is not the slow bash tool: ${inflight.identity.name}',
+  );
+  // `active` is already true at `prepared` (the call owns a pending handle);
+  // only the durable dispatch record plus a live dispatch handle proves the
+  // bash process was actually started before the host kill.
+  expect(inflight.phase, 'dispatch', reason: 'the in-flight call was never dispatched (phase=${inflight.phase})');
+  expect(inflight.dispatchActive, isTrue, reason: 'the dispatched call has no live dispatch handle');
+  expect(liveSnapshot.state, LifecycleState.running, reason: 'the lifecycle did not report the call as running');
+  final runningChat = container.read(chatProvider(sessionId));
+  expect(runningChat.running, isTrue, reason: 'the turn already ended before the host could kill the app');
+  final runningTool = runningChat.items.whereType<ToolChatItem>().firstOrNull;
+  expect(runningTool, isNotNull, reason: 'the in-flight tool is missing from the chat');
+  if (runningTool == null) fail('the in-flight tool is missing from the chat');
+  expect(runningTool.status, ToolStatus.running, reason: 'the in-flight tool status is ${runningTool.status.name}');
+  _log(
+    'tool in flight: name=${inflight.identity.name} seq=${inflight.identity.callSeq} '
+    'phase=${inflight.phase} active=${inflight.active} dispatchActive=${inflight.dispatchActive} '
+    'sideEffect=${(countText ?? '').trim()}',
+  );
 
   // Filesystem baseline: how many times the tool's side effect was present
   // before the process boundary. The cold relaunch and the confirmation must
@@ -572,10 +692,12 @@ Future<void> _crash(WidgetTester tester) async {
   await tester.pump();
 
   coldStartLog(
-    'CRASH-READY-TO-KILL session=$sessionId '
-    'reason=${engineUnknown != null ? 'engine-unknown' : 'tool-in-flight'} '
-    'callSeq=${dispatched?.identity.callSeq ?? -1} baselineLines=$baselineLines '
-    'count=${(countText ?? '').trim()} elapsed=${clock.elapsedMilliseconds}ms',
+    'CRASH-READY-TO-KILL session=$sessionId reason=tool-in-flight '
+    'name=${inflight.identity.name} callSeq=${inflight.identity.callSeq} '
+    'phase=${inflight.phase} active=${inflight.active} '
+    'dispatchActive=${inflight.dispatchActive} returned=${inflight.hasReturned} '
+    'baselineLines=$baselineLines count=${(countText ?? '').trim()} '
+    'elapsed=${clock.elapsedMilliseconds}ms',
   );
   // The host wrapper kills this process now. Staying alive keeps the tool
   // call unresolved instead of letting the turn finish.
@@ -596,7 +718,12 @@ Future<void> _crashVerify(WidgetTester tester) async {
   _step('crash_verify: cold launch after the host killed the app mid-tool');
   await LocalPaths.load();
   runApp(const ProviderScope(child: DshApp()));
-  await _waitFor(tester, 'home shell', () => find.byType(HomeShell).evaluate().isNotEmpty, timeout: const Duration(minutes: 4));
+  await _waitFor(
+    tester,
+    'home shell',
+    () => find.byType(HomeShell).evaluate().isNotEmpty,
+    timeout: const Duration(minutes: 4),
+  );
   final container = _container(tester);
   expect(find.byType(WelcomePage), findsNothing);
   await _waitForAutoStart(tester, container);
@@ -629,39 +756,111 @@ Future<void> _crashVerify(WidgetTester tester) async {
     await tester.pump();
   }
   expect(snapshot, isNotNull, reason: 'the lifecycle route never answered after the cold launch');
-  expect(snapshot!.hasUnknownResult, isTrue,
-      reason: 'the interrupted tool call was not reported as unknown (state=${snapshot.state.wire})');
+  expect(
+    snapshot!.hasUnknownResult,
+    isTrue,
+    reason: 'the interrupted tool call was not reported as unknown (state=${snapshot.state.wire})',
+  );
   final unresolved = snapshot.unresolvedCalls.toList();
-  _log('lifecycle after cold launch: state=${snapshot.state.wire} '
-      'unresolved=${unresolved.map((c) => '${c.identity.name}#${c.identity.callSeq}:${c.phase}').join(',')}');
-  // The engine's own unknown placeholder (TOOL_OUTCOME_UNKNOWN) can exist
-  // without a call row in the coordinator snapshot; the banner is driven by
-  // hasUnknownResult, which is what this phase asserts.
+  _log(
+    'lifecycle after cold launch: state=${snapshot.state.wire} '
+    'unresolved=${unresolved.map((c) => '${c.identity.name}#${c.identity.callSeq}:${c.phase}').join(',')}',
+  );
+  // The unknown must belong to the call the host killed after dispatch, not to
+  // an untracked synthetic placeholder created while the app was still alive.
+  expect(
+    unresolved,
+    hasLength(1),
+    reason:
+        'the killed slow call is not the only unresolved call: '
+        '${unresolved.map((c) => '${c.identity.name}#${c.identity.callSeq}:${c.phase}').join(',')}',
+  );
+  final killed = unresolved.single;
+  expect(killed.identity.name, 'bash', reason: 'the unresolved call is not the slow bash tool');
+  expect(killed.identity.callSeq, greaterThan(0), reason: 'the unresolved call has no durable sequence');
+  expect(
+    killed.phase,
+    anyOf('prepared', 'dispatch'),
+    reason: 'the killed call had already returned (phase=${killed.phase})',
+  );
+  expect(killed.hasReturned, isFalse, reason: 'the killed call has a stored return');
 
   _step('crash_verify: the workspace side effect did not grow before confirmation');
+  expect(
+    record.baselineLines,
+    1,
+    reason: 'the crash phase did not record exactly one pre-kill side effect (${record.baselineLines})',
+  );
   final before = await _safeCountLines(client, record.sessionId, record.countFile);
-  expect(before, record.baselineLines,
-      reason: 'the tool ran again before the user confirmed '
-          '(baseline ${record.baselineLines}, now $before)');
+  expect(
+    before,
+    record.baselineLines,
+    reason:
+        'the tool ran again before the user confirmed '
+        '(baseline ${record.baselineLines}, now $before)',
+  );
 
   _step('crash_verify: the unknown-result banner is shown for the session');
   container.read(currentSessionProvider.notifier).select(record.sessionId);
-  await _waitFor(tester, 'the recovered chat opens', () => find.byType(Composer).evaluate().isNotEmpty, timeout: const Duration(minutes: 2));
+  await _waitFor(
+    tester,
+    'the recovered chat opens',
+    () => find.byType(Composer).evaluate().isNotEmpty,
+    timeout: const Duration(minutes: 2),
+  );
   await _waitFor(
     tester,
     'the unknown-result banner',
-    () => find.byType(UnknownResultsBanner).evaluate().isNotEmpty &&
+    () =>
+        find.byType(UnknownResultsBanner).evaluate().isNotEmpty &&
         find.text(appL10n.harmonyUnknownResults).evaluate().isNotEmpty,
     timeout: const Duration(minutes: 1),
   );
   expect(find.text(appL10n.harmonyUnknownResultsReview), findsOneWidget);
+
+  _step('crash_verify: the recovered transcript has the interrupted bash call as unknown');
+  ToolChatItem? unknownTool() {
+    final chat = container.read(chatProvider(record.sessionId));
+    return chat.items.whereType<ToolChatItem>().where((tool) {
+      return tool.name == 'bash' &&
+          tool.status == ToolStatus.failed &&
+          (tool.failure?.code == 'TOOL_OUTCOME_UNKNOWN' || tool.failure?.name == 'ToolOutcomeUnknownError');
+    }).firstOrNull;
+  }
+
+  await _waitFor(
+    tester,
+    'the unknown bash result in the recovered transcript',
+    () => unknownTool() != null,
+    timeout: const Duration(minutes: 2),
+  );
+  final recoveredTool = unknownTool()!;
+  expect(
+    recoveredTool.resultText,
+    contains('outcome is unknown'),
+    reason: 'the recovered tool result does not say the outcome is unknown: ${recoveredTool.resultText}',
+  );
+  expect(
+    container.read(chatProvider(record.sessionId)).running,
+    isFalse,
+    reason: 'the recovered turn is still running after the cold launch',
+  );
+  _log(
+    'recovered transcript: name=${recoveredTool.name} status=${recoveredTool.status.name} '
+    'failure=${recoveredTool.failure?.name}/${recoveredTool.failure?.code}',
+  );
+
   // Opening the session resumes the agent, which reconciles: still one line.
   await Future<void>.delayed(const Duration(seconds: 2));
   await tester.pump();
   final afterResume = await _safeCountLines(client, record.sessionId, record.countFile);
-  expect(afterResume, record.baselineLines,
-      reason: 'opening the recovered session re-executed the tool '
-          '(baseline ${record.baselineLines}, now $afterResume)');
+  expect(
+    afterResume,
+    record.baselineLines,
+    reason:
+        'opening the recovered session re-executed the tool '
+        '(baseline ${record.baselineLines}, now $afterResume)',
+  );
 
   _step('crash_verify: the user confirms; the tool is still not re-executed');
   await tester.tap(find.text(appL10n.harmonyUnknownResultsReview));
@@ -687,17 +886,100 @@ Future<void> _crashVerify(WidgetTester tester) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
   }
   final afterConfirm = await _safeCountLines(client, record.sessionId, record.countFile);
-  expect(afterConfirm, record.baselineLines,
-      reason: 'confirming the unknown result re-executed the tool '
-          '(baseline ${record.baselineLines}, now $afterConfirm)');
+  expect(
+    afterConfirm,
+    record.baselineLines,
+    reason:
+        'confirming the unknown result re-executed the tool '
+        '(baseline ${record.baselineLines}, now $afterConfirm)',
+  );
+  final confirmed = await client.getLifecycleStatus(record.sessionId, timeout: const Duration(seconds: 10));
+  expect(
+    confirmed.hasUnknownResult,
+    isFalse,
+    reason: 'the acknowledgement did not clear the unknown result (state=${confirmed.state.wire})',
+  );
   _log('acknowledged; workspace side-effect lines still ${record.baselineLines}');
 
-  coldStartLog('PHASE-PASS crash_verify session=${record.sessionId} elapsed=${clock.elapsedMilliseconds}ms');
+  _step('crash_verify: the conversation continues once after the confirmation');
+  // The old error belongs to the interrupted turn; clear only the banner, then
+  // continue with a real model turn. No retry action is tapped, so the killed
+  // tool is never sent again.
+  container.read(chatProvider(record.sessionId).notifier).dismissError();
+  await tester.pump();
+  // Reuse the real provider the seed/verify phases already installed and
+  // authenticated. The credential broker hands its key out only during setup;
+  // this continuation must not fetch it again (a second fetch can be 410).
+  final realProviderId = await _existingRealProvider(tester, container);
+  final switched = await container
+      .read(chatProvider(record.sessionId).notifier)
+      .setModel(ModelSelection(provider: realProviderId, model: kE2eModel));
+  expect(switched, isTrue, reason: 'the continued session did not accept the real model');
+  await _sendInCurrentSession(
+    tester,
+    container,
+    prompt: kColdStartCrashContinuePrompt,
+    marker: kColdStartCrashContinueReply,
+  );
+  final continued = container.read(chatProvider(record.sessionId));
+  expect(continued.error, isNull, reason: 'the continuation turn ended with an error: ${continued.error}');
+  expect(
+    continued.items.whereType<AssistantChatItem>().any((item) => item.text.contains(kColdStartCrashContinueReply)),
+    isTrue,
+    reason: 'the continuation turn did not append the real-model reply',
+  );
+  final bashAfterContinue = continued.items.whereType<ToolChatItem>().where((item) => item.name == 'bash').toList();
+  expect(
+    bashAfterContinue,
+    hasLength(1),
+    reason:
+        'the continuation turn duplicated the killed bash call: '
+        '${bashAfterContinue.map((item) => '${item.callId}:${item.status.name}').toList()}',
+  );
+  expect(
+    bashAfterContinue.single.status,
+    ToolStatus.failed,
+    reason: 'the continuation changed the killed bash call to ${bashAfterContinue.single.status.name}',
+  );
+  final afterContinue = await _safeCountLines(client, record.sessionId, record.countFile);
+  expect(
+    afterContinue,
+    record.baselineLines,
+    reason:
+        'the continuation turn re-executed the killed tool '
+        '(baseline ${record.baselineLines}, now $afterContinue)',
+  );
+  final afterContinueStatus = await client.getLifecycleStatus(record.sessionId, timeout: const Duration(seconds: 10));
+  expect(
+    afterContinueStatus.hasUnknownResult,
+    isFalse,
+    reason: 'the unknown result came back after the continuation turn',
+  );
+  _log('conversation continued once with the real model; workspace side-effect lines still ${record.baselineLines}');
+
+  coldStartLog(
+    'PHASE-PASS crash_verify session=${record.sessionId} continued=1 '
+    'elapsed=${clock.elapsedMilliseconds}ms',
+  );
   await _holdForHost(tester);
 }
 
 // ---------------------------------------------------------------------------
 // Real provider
+
+/// The persisted real provider (seed/verify installed it with the broker key).
+/// Crash recovery must not re-fetch a one-shot/expired broker credential.
+Future<String> _existingRealProvider(WidgetTester tester, ProviderContainer container) async {
+  final snapshot = await _waitForProviders(tester, container);
+  final existing = snapshot.providers.where((provider) => provider.baseUrl == kE2eProviderBaseUrl).firstOrNull;
+  expect(
+    existing,
+    isNotNull,
+    reason: 'no persisted real provider at $kE2eProviderBaseUrl: the crash_verify continuation needs seed/verify first',
+  );
+  _log('reused persisted real provider ${existing!.id} for the continuation turn');
+  return existing.id;
+}
 
 Future<String> _installRealProvider(WidgetTester tester, ProviderContainer container) async {
   E2eConfig.requireBroker();
@@ -758,7 +1040,9 @@ Future<String> _waitForCatalog(
     try {
       container.invalidate(modelCatalogProvider);
       final catalog = await container.read(modelCatalogProvider.future).timeout(const Duration(seconds: 20));
-      if (catalog != null && catalog.models.any((entry) => entry.provider == providerId && entry.id == model)) return providerId;
+      if (catalog != null && catalog.models.any((entry) => entry.provider == providerId && entry.id == model)) {
+        return providerId;
+      }
     } catch (error) {
       _log('model catalog read failed, retrying: $error');
     }
@@ -768,11 +1052,7 @@ Future<String> _waitForCatalog(
   fail('model $providerId/$model did not appear in the engine catalog within 3 minutes');
 }
 
-Future<String> _installCrashProvider(
-  WidgetTester tester,
-  ProviderContainer container,
-  _CrashModelServer mock,
-) async {
+Future<String> _installCrashProvider(WidgetTester tester, ProviderContainer container, _CrashModelServer mock) async {
   await _waitForProviders(tester, container);
   final actions = container.read(providerActionsProvider);
   final id = await actions.save(
@@ -797,7 +1077,12 @@ Future<String> _sendTurn(
   required String marker,
   required Duration timeout,
 }) async {
-  await _waitFor(tester, 'chat composer', () => find.byType(Composer).evaluate().isNotEmpty, timeout: const Duration(minutes: 2));
+  await _waitFor(
+    tester,
+    'chat composer',
+    () => find.byType(Composer).evaluate().isNotEmpty,
+    timeout: const Duration(minutes: 2),
+  );
   container.read(currentSessionProvider.notifier).select(null);
   await _waitFor(
     tester,
@@ -854,7 +1139,8 @@ Future<void> _sendInCurrentSession(
     await _waitFor(
       tester,
       'the chat starts running',
-      () => container.read(chatProvider(sessionId!)).running || container.read(chatProvider(sessionId)).items.isNotEmpty,
+      () =>
+          container.read(chatProvider(sessionId!)).running || container.read(chatProvider(sessionId)).items.isNotEmpty,
       timeout: const Duration(minutes: 2),
     );
   }
@@ -862,17 +1148,12 @@ Future<void> _sendInCurrentSession(
 
 Future<void> _waitForSendEnabled(WidgetTester tester) async {
   final send = _sendButton();
-  await _waitFor(
-    tester,
-    'send key enabled after typing',
-    () {
-      final composers = tester.widgetList<Composer>(find.byType(Composer)).toList();
-      return send.evaluate().isNotEmpty &&
-          composers.isNotEmpty &&
-          composers.every((composer) => composer.connected && composer.sessionReady && !composer.busy);
-    },
-    timeout: const Duration(minutes: 2),
-  );
+  await _waitFor(tester, 'send key enabled after typing', () {
+    final composers = tester.widgetList<Composer>(find.byType(Composer)).toList();
+    return send.evaluate().isNotEmpty &&
+        composers.isNotEmpty &&
+        composers.every((composer) => composer.connected && composer.sessionReady && !composer.busy);
+  }, timeout: const Duration(minutes: 2));
 }
 
 Future<void> _waitForTurn(
@@ -889,17 +1170,17 @@ Future<void> _waitForTurn(
     if (chat.error != null) fail('the turn failed before it ended: ${chat.error}');
     if (!autoApproved && chat.approvals.isNotEmpty) {
       autoApproved = true;
-      _log('approval requested for ${chat.approvals.map((a) => a.toolName).join(',')}; allowing it once (real UI feature)');
+      _log(
+        'approval requested for ${chat.approvals.map((a) => a.toolName).join(',')}; allowing it once (real UI feature)',
+      );
       container.read(chatProvider(sessionId).notifier).setAutoApprove(true);
     }
-    final done = !chat.loading &&
+    final done =
+        !chat.loading &&
         !chat.running &&
         chat.items.whereType<AssistantChatItem>().any((item) => !item.streaming && item.text.contains(marker));
     if (done) return;
-    if (marker.isEmpty &&
-        !chat.loading &&
-        !chat.running &&
-        chat.items.whereType<ToolChatItem>().isNotEmpty) {
+    if (marker.isEmpty && !chat.loading && !chat.running && chat.items.whereType<ToolChatItem>().isNotEmpty) {
       return;
     }
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -907,26 +1188,25 @@ Future<void> _waitForTurn(
   }
   final chat = container.read(chatProvider(sessionId));
   final texts = chat.items
-      .map((item) => switch (item) {
-            UserChatItem(:final text) => 'user(${text.length}):${text.substring(0, text.length.clamp(0, 60))}',
-            AssistantChatItem(:final text) => 'assistant(${text.length}):${text.substring(0, text.length.clamp(0, 60))}',
-            _ => item.runtimeType.toString(),
-          })
+      .map(
+        (item) => switch (item) {
+          UserChatItem(:final text) => 'user(${text.length}):${text.substring(0, text.length.clamp(0, 60))}',
+          AssistantChatItem(:final text) => 'assistant(${text.length}):${text.substring(0, text.length.clamp(0, 60))}',
+          _ => item.runtimeType.toString(),
+        },
+      )
       .join(' | ');
-  fail('the turn did not finish with the expected marker within ${timeout.inSeconds}s '
-      '(running=${chat.running}, loading=${chat.loading}, items=$texts)');
+  fail(
+    'the turn did not finish with the expected marker within ${timeout.inSeconds}s '
+    '(running=${chat.running}, loading=${chat.loading}, items=$texts)',
+  );
 }
 
 Future<void> _waitForChat(WidgetTester tester, ProviderContainer container, String sessionId) async {
-  await _waitFor(
-    tester,
-    'the persisted conversation loads',
-    () {
-      final chat = container.read(chatProvider(sessionId));
-      return !chat.loading && chat.items.isNotEmpty;
-    },
-    timeout: const Duration(minutes: 2),
-  );
+  await _waitFor(tester, 'the persisted conversation loads', () {
+    final chat = container.read(chatProvider(sessionId));
+    return !chat.loading && chat.items.isNotEmpty;
+  }, timeout: const Duration(minutes: 2));
   final chat = container.read(chatProvider(sessionId));
   if (chat.error != null) fail('the persisted conversation failed to load: ${chat.error}');
 }
@@ -949,7 +1229,11 @@ Future<String> _waitForTitle(WidgetTester tester, ProviderContainer container, S
   fail('the seeded session never got a title (session $sessionId)');
 }
 
-Future<List<SessionSummary>> _waitForSessions(WidgetTester tester, ProviderContainer container, String sessionId) async {
+Future<List<SessionSummary>> _waitForSessions(
+  WidgetTester tester,
+  ProviderContainer container,
+  String sessionId,
+) async {
   final clock = Stopwatch()..start();
   while (clock.elapsed < const Duration(minutes: 2)) {
     try {
@@ -1000,17 +1284,28 @@ Future<int> _safeCountLines(DshClient client, String sessionId, String file) asy
 
 Future<List<String>> _countLines(DshClient client, String sessionId, String file) async {
   final text = (await client.readWorkspaceText(sessionId, file)).text;
-  return text
-      .split('\n')
-      .map((line) => line.trim())
-      .where((line) => line.isNotEmpty)
-      .toList();
+  return text.split('\n').map((line) => line.trim()).where((line) => line.isNotEmpty).toList();
 }
+
+/// One-line lifecycle call summary for failure messages and poll logs.
+String _calls(LifecycleSnapshot? snapshot) => snapshot == null
+    ? 'n/a'
+    : snapshot.calls
+          .map(
+            (call) =>
+                '${call.identity.name}#${call.identity.callSeq}:${call.phase}'
+                ':active=${call.active}:dispatch=${call.dispatchActive}:returned=${call.hasReturned}',
+          )
+          .join(',');
 
 // ---------------------------------------------------------------------------
 // Runtime helpers
 
-Future<void> _ensureEngineRunning(WidgetTester tester, ProviderContainer container, {required bool allowExplicitStart}) async {
+Future<void> _ensureEngineRunning(
+  WidgetTester tester,
+  ProviderContainer container, {
+  required bool allowExplicitStart,
+}) async {
   var started = false;
   final clock = Stopwatch()..start();
   while (clock.elapsed < const Duration(minutes: 5)) {
@@ -1213,8 +1508,10 @@ class _CrashModelServer {
         final wantsTool = tools is List && tools.isNotEmpty && !hasToolResult;
         final stream = body['stream'] == true;
         final model = '${body['model'] ?? kColdStartCrashModel}';
-        _log('crash mock request #$requests model=$model stream=$stream tools=${tools is List ? tools.length : 0} '
-            'toolResult=$hasToolResult');
+        _log(
+          'crash mock request #$requests model=$model stream=$stream tools=${tools is List ? tools.length : 0} '
+          'toolResult=$hasToolResult',
+        );
         if (wantsTool) {
           toolServed = true;
           if (stream) {
@@ -1236,7 +1533,14 @@ class _CrashModelServer {
                       {
                         'id': 'call_t30_crash_1',
                         'type': 'function',
-                        'function': {'name': 'bash', 'arguments': jsonEncode({'command': kColdStartCrashCommand, 'timeoutMs': kColdStartCrashTimeoutMs})},
+                        'function': {
+                          'name': 'bash',
+                          'arguments': jsonEncode({
+                            'description': kColdStartCrashDescription,
+                            'command': kColdStartCrashCommand,
+                            'timeoutMs': kColdStartCrashTimeoutMs,
+                          }),
+                        },
                       },
                     ],
                   },
@@ -1285,28 +1589,50 @@ class _CrashModelServer {
       ..headers.contentType = ContentType('text', 'event-stream', charset: 'utf-8')
       ..headers.set('cache-control', 'no-cache')
       ..bufferOutput = false;
-    response.write('data: ${jsonEncode({...base, 'choices': [
-      {'index': 0, 'delta': {'content': 'Running the slow command.'}, 'finish_reason': null},
-    ]})}\n\n');
-    response.write('data: ${jsonEncode({...base, 'choices': [
-      {
-        'index': 0,
-        'delta': {
-          'tool_calls': [
-            {
-              'index': 0,
-              'id': 'call_t30_crash_1',
-              'type': 'function',
-              'function': {'name': 'bash', 'arguments': jsonEncode({'command': kColdStartCrashCommand, 'timeoutMs': kColdStartCrashTimeoutMs})},
+    response.write(
+      'data: ${jsonEncode({
+        ...base,
+        'choices': [
+          {
+            'index': 0,
+            'delta': {'content': 'Running the slow command.'},
+            'finish_reason': null,
+          },
+        ],
+      })}\n\n',
+    );
+    response.write(
+      'data: ${jsonEncode({
+        ...base,
+        'choices': [
+          {
+            'index': 0,
+            'delta': {
+              'tool_calls': [
+                {
+                  'index': 0,
+                  'id': 'call_t30_crash_1',
+                  'type': 'function',
+                  'function': {
+                    'name': 'bash',
+                    'arguments': jsonEncode({'description': kColdStartCrashDescription, 'command': kColdStartCrashCommand, 'timeoutMs': kColdStartCrashTimeoutMs}),
+                  },
+                },
+              ],
             },
-          ],
-        },
-        'finish_reason': null,
-      },
-    ]})}\n\n');
-    response.write('data: ${jsonEncode({...base, 'choices': [
-      {'index': 0, 'delta': const <String, Object?>{}, 'finish_reason': 'tool_calls'},
-    ]})}\n\n');
+            'finish_reason': null,
+          },
+        ],
+      })}\n\n',
+    );
+    response.write(
+      'data: ${jsonEncode({
+        ...base,
+        'choices': [
+          {'index': 0, 'delta': const <String, Object?>{}, 'finish_reason': 'tool_calls'},
+        ],
+      })}\n\n',
+    );
     response.write('data: [DONE]\n\n');
     await response.close();
   }
@@ -1318,12 +1644,26 @@ class _CrashModelServer {
       ..headers.contentType = ContentType('text', 'event-stream', charset: 'utf-8')
       ..headers.set('cache-control', 'no-cache')
       ..bufferOutput = false;
-    response.write('data: ${jsonEncode({...base, 'choices': [
-      {'index': 0, 'delta': {'content': text}, 'finish_reason': null},
-    ]})}\n\n');
-    response.write('data: ${jsonEncode({...base, 'choices': [
-      {'index': 0, 'delta': const <String, Object?>{}, 'finish_reason': 'stop'},
-    ]})}\n\n');
+    response.write(
+      'data: ${jsonEncode({
+        ...base,
+        'choices': [
+          {
+            'index': 0,
+            'delta': {'content': text},
+            'finish_reason': null,
+          },
+        ],
+      })}\n\n',
+    );
+    response.write(
+      'data: ${jsonEncode({
+        ...base,
+        'choices': [
+          {'index': 0, 'delta': const <String, Object?>{}, 'finish_reason': 'stop'},
+        ],
+      })}\n\n',
+    );
     response.write('data: [DONE]\n\n');
     await response.close();
   }
@@ -1359,12 +1699,7 @@ Future<void> _holdForHost(WidgetTester tester) async {
   fail('the host never terminated the app; phases must be ended by scripts/e2e/ios/run_cold_start_real.sh');
 }
 
-Future<void> _waitFor(
-  WidgetTester tester,
-  String what,
-  bool Function() done, {
-  required Duration timeout,
-}) async {
+Future<void> _waitFor(WidgetTester tester, String what, bool Function() done, {required Duration timeout}) async {
   final clock = Stopwatch()..start();
   while (clock.elapsed < timeout) {
     if (done()) return;
