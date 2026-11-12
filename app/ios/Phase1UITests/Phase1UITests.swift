@@ -206,7 +206,10 @@ final class Phase1UITests: XCTestCase {
     selectMockModelIfPossible(app)
     attachScreenshot("D6-home-before-attach")
 
-    XCTAssertTrue(waitForHome(app, 30), "Home did not come back after the model sheet.")
+    // Selecting a model refreshes the catalog and can take a while on a cold
+    // engine; wait for the composer itself (the attach row's owner) instead of
+    // the header/drawer labels.
+    XCTAssertTrue(waitForComposer(app, 90), "Home did not come back after the model sheet.")
     XCTAssertTrue(
       waitForAnyLabelContaining(["Mock Phase1", "mock-phase1"], app, 20),
       "The mock model was not selected in the chat header."
