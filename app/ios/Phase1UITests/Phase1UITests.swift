@@ -203,6 +203,7 @@ final class Phase1UITests: XCTestCase {
     completeOnboarding(app, configureProvider: true)
     XCTAssertTrue(waitForHome(app, 300), "Onboarding with a model provider did not reach home.")
     XCTAssertTrue(waitForComposer(app, Self.engineTimeout), "The engine did not become ready for the attachment test.")
+    settle(8)
     selectMockModelIfPossible(app)
     attachScreenshot("D6-home-before-attach")
 
@@ -532,40 +533,33 @@ final class Phase1UITests: XCTestCase {
   // MARK: - Photos
 
   private func selectMockModelIfPossible(_ app: XCUIApplication) {
-    guard let chip = buttonContaining(["Model:", "模型："], app) else { return }
-    chip.tap()
-    // The sheet shows the provider's display name and a title-cased model name
-    // ("Mock Phase1 Model"), not the raw id.
+    // A provider added during onboarding can take a moment to become routable;
+    // the card may be present but its tap is a no-op until the catalog refresh
+    // lands. Retry like a person would: open, tap, close if nothing happened.
     let needles = [Self.providerModel, "Mock Phase1 Model", "Phase1 Model"]
-    let deadline = Date().addingTimeInterval(35)
-    while Date() < deadline {
+    for attempt in 0..<4 {
+      guard let chip = buttonContaining(["Model:", "模型："], app) else { return }
+      chip.tap()
+      settle(3)
       if let mock = buttonContaining(needles, app) ?? staticContaining(needles, app) {
         mock.tap()
+        settle(3)
+        if isHome(app) { return }
+        // The sheet can still be up after a no-op tap; dismiss it and retry.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap()
         settle(2)
-        // Selecting a model does not dismiss the sheet. Its Close control covers
-        // the scrim at {0,573}-{402,874}; the sheet starts around y=620, so tap
-        // the exposed strip of Close above the sheet, then the scrim itself.
-        for _ in 0..<3 {
-          if isHome(app) { return }
-          app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.677)).tap()
-          settle(2)
-          if isHome(app) { return }
-          app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap()
-          settle(2)
-        }
-        return
+        if isHome(app) { return }
+      } else {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap()
+        settle(2)
       }
-      RunLoop.current.run(until: Date().addingTimeInterval(1))
+      if attempt < 3 { settle(6) }
     }
     let tree = visibleText(app)
     let attachment = XCTAttachment(string: tree)
     attachment.name = "D6-model-sheet-labels"
     attachment.lifetime = .keepAlways
     add(attachment)
-    if let close = buttonContaining(["Close", "关闭"], app) {
-      close.tap()
-      settle(2)
-    }
   }
 
   private func pickFirstPhoto(_ app: XCUIApplication) -> Bool {
