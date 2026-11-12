@@ -123,3 +123,29 @@ Phase 1 外（按原决策继续 deferred）：真机签名/安装、APNs、iSH 
 ## 7. 执行顺序
 
 M0（T24/T25）→ M1（T26–T29）→ M2（T30–T33）→ M3（T34–T36）→ M4（T37–T39）→ M5（T40–T41）。
+
+## 6. 执行状态（2026-11-13，滚动更新）
+
+| 任务 | 状态 | 证据 |
+|---|---|---|
+| T24 Spec v1.1 | DONE | `docs/specs/phase1/*`；spec checker OK |
+| T25 基础设施 | DONE | `reports/phase1-completion/T25/`（broker/sshd/lock 自测） |
+| T26 会话 superseded | DONE | `T26`；L4 on 17 Pro |
+| T27 审批 C7/C8 + 默认权限 | DONE | `T27/green/run-green.log` + `run-green.env.json`；pet 修复 |
+| T28 请求头 D2-03-AC4 | DONE | `T28` |
+| T29 事务/回退 | DONE | `T29` |
+| T30 进程级持久化 | DONE | `T30/run-strong-final.log` 5/5 PASS 591s + mid-turn crash |
+| T31 工作区/文件页 | DONE | `T31/green/workspace_real.log` |
+| T32 对话控制 C4/C5/C6/C9–C11 | **OPEN（FAIL）** | 多轮到达 steer/queue/stop/tool/copy/quote/question，最终断言未绿；源码未提交 |
+| T33a 真实 DSH Remote | DONE | `T33b-relay/green/02-flutter-test.log` |
+| T33b 真实 SSH | DONE | `T33b-ssh/green/flutter-test.log`；真实 sshd |
+| T34a Phase1UITests target | DONE | `T34a` 2/2 PASS |
+| T34b 进程级 UI 流程 | **OPEN（FAIL）** | 仅 T34a 骨架；B6/B7/D6/D8/G1/G2 未产出可复现 PASS |
+| T35a goldens/RunnerTests/T6 | DONE | `T35a/report.md`；27 golden、367/367 |
+| T35b verify.sh 新模式 | DONE | `T35b`；`--self-test` 17/17 |
+| T36 CI/skip audit | DONE（Linux 流程文件） | `T36`；CI 尚未在远端跑绿 |
+| T37 matrix/traceability | DONE | `T37`；70 AC / 44 步 |
+| T38 独立 verifier | DONE（发现 1 个门禁缺陷并修复） | `reports/phase1-completion/T38/report.md` |
+| T39 acceptance/tag | PARTIAL | `acceptance-report.md` v2；因 T32/T34b 未闭合不 tag |
+| T40 演示录屏 | DONE | `reports/phase1-completion/video/out/demo-phase1-v1.1.mp4` |
+| T41 最终门禁 | PARTIAL | `--static` 7/0/0、`--fast` 13/0/0、`--full` 进行中；`--real` 缺 T32 wrapper fail-closed |
