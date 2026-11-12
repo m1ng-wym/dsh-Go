@@ -94,7 +94,42 @@ X11Forwarding no
 AllowAgentForwarding no
 LogLevel ERROR
 EOF
+  if [ -n "$SSHD_SETENV_LINES" ]; then
+    printf '%s\n' "$SSHD_SETENV_LINES" >>"$work/sshd_config"
+  fi
   chmod 600 "$work/sshd_config"
+}
+
+# Validates DSH_E2E_SSHD_SETENV and turns it into SetEnv config lines. The
+# value may not contain whitespace or shell metacharacters of its own: each
+# entry arrives as one whitespace-separated NAME=value token.
+build_setenv_lines() {
+  SSHD_SETENV_LINES=""
+  local kv name value
+  for kv in ${DSH_E2E_SSHD_SETENV:-}; do
+    case "$kv" in
+      *=*) ;;
+      *) fail "DSH_E2E_SSHD_SETENV expects NAME=value, got: $kv" ;;
+    esac
+    name="${kv%%=*}"
+    value="${kv#*=}"
+    case "$name" in
+      [A-Za-z_]*) ;;
+      *) fail "invalid DSH_E2E_SSHD_SETENV name: $name" ;;
+    esac
+    case "$name" in
+      *[!A-Za-z0-9_]*) fail "invalid DSH_E2E_SSHD_SETENV name: $name" ;;
+    esac
+    case "$value" in
+      *[[:space:]]*) fail "DSH_E2E_SSHD_SETENV value may not contain whitespace: $kv" ;;
+    esac
+    if [ -n "$SSHD_SETENV_LINES" ]; then
+      SSHD_SETENV_LINES="$SSHD_SETENV_LINES
+SetEnv $kv"
+    else
+      SSHD_SETENV_LINES="SetEnv $kv"
+    fi
+  done
 }
 
 # Starts sshd and prints one machine-readable SSHD {...} line on stdout.
@@ -106,6 +141,8 @@ start_sshd() {
 
   local ssh_user="${DSH_E2E_SSH_USER:-${USER:-$(id -un)}}"
   [ "$ssh_user" != "root" ] || fail "refusing to test SSH as root (PermitRootLogin no)"
+
+  build_setenv_lines
 
   local work
   work="$(mktemp -d "${TMPDIR:-/tmp}/dsh-e2e-sshd.XXXXXX")" || fail "cannot create the sshd temp dir"
