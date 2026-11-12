@@ -203,7 +203,13 @@ final class Phase1UITests: XCTestCase {
     completeOnboarding(app, configureProvider: true)
     XCTAssertTrue(waitForHome(app, 300), "Onboarding with a model provider did not reach home.")
     XCTAssertTrue(waitForComposer(app, Self.engineTimeout), "The engine did not become ready for the attachment test.")
-    settle(8)
+    // The provider saved by onboarding is picked up by the engine's catalog on
+    // the next launch; restart like a person would before choosing its model.
+    app.terminate()
+    app.launch()
+    XCTAssertTrue(waitForHome(app, 300), "Home did not come back after relaunch.")
+    XCTAssertTrue(waitForComposer(app, Self.engineTimeout), "The engine did not become ready after relaunch.")
+    settle(10)
     selectMockModelIfPossible(app)
     attachScreenshot("D6-home-before-attach")
 
