@@ -279,6 +279,31 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
     });
 
+    testWidgets('an approval waits on the page: the pet lets the card underneath take the tap', (tester) async {
+      final list = <Offset>[];
+      await pumpPet(tester, onListTap: list.add);
+      final body = hitBox(tester, deepy);
+      // The body normally takes the tap itself.
+      await tester.tapAt(body.center);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(list, isEmpty);
+      // The page reports an open approval card; the card's buttons sit where
+      // the pet stands, so its body must stop taking touches (the card is the
+      // primary control), while it keeps drawing.
+      container.read(petFocusProvider.notifier).report(
+        PetFocus(
+          host: container.read(activeHostProvider),
+          sessionId: 'approval-session',
+          waitingKey: 'approval-event-1',
+        ),
+      );
+      await tester.pump();
+      await tester.tapAt(body.center);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(list, hasLength(1), reason: 'the pet covered the waiting card and swallowed its tap');
+      expect(find.byKey(const ValueKey('pet-body')), findsOneWidget, reason: 'the pet still shows');
+    });
+
     testWidgets('a panel up (slash palette, @, dictation): it fades and takes no touches', (tester) async {
       final list = <Offset>[];
       await pumpPet(tester, onListTap: list.add);
